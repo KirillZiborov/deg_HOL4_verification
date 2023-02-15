@@ -1,0 +1,11 @@
+CAKEMLDIR=/root/cakeml
+INCLUDES = $(HOLDIR)/examples/balanced_bst\
+					 $(CAKEMLDIR)/misc $(CAKEMLDIR)/semantics $(CAKEMLDIR)/semantics/proofs\
+					 $(CAKEMLDIR)/basis/pure $(CAKEMLDIR)/basis\
+					 $(CAKEMLDIR)/translator $(CAKEMLDIR)/characteristic\
+					 $(CAKEMLDIR)/compiler $(CAKEMLDIR)/compiler/backend/proofs\
+					 $(CAKEMLDIR)/compiler/backend/x64/proofs\
+					 $(CAKEMLDIR)/translator/monadic/\
+					 $(CAKEMLDIR)/translator/monadic/monad_base/
+all: $(DEFAULT_TARGETS)
+.PHONY: all
