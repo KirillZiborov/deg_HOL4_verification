@@ -56,9 +56,9 @@ blindSig = <|
 End
 
 Datatype:
-  public_key = <|
+  vote = <|
+    userId: num;
     vote: word8 list;
-    transaction_id: num;
     blindSig: blindSig;
     |>;
 End
@@ -76,7 +76,7 @@ Datatype:
     context: Context;    
     transactionCount: num;
 
-    public_keys: public_key list;
+    votes: vote list;
     comissionKey: string;
     commisionDecryption: num;
     dkgKey: string;
@@ -90,11 +90,12 @@ Datatype:
     IssueBallotsRegistrator: num;
     decryption: num;
 
-    votersList: (num # string);
-    removeFromVotersList: (num # string);
-    blindSig: (num # blindSig list);
-    blindSigFail: (num # string); 
-    voteFail: (num # (public_key # string));
+    votersList: (num # string) list;
+    votersListAdd: (num # string) list;
+    removeFromVotersList: (num # string) list;
+    blindSig: (num # blindSig list) list;
+    blindSigFail: (num # num); 
+    voteFail: (num # (num # num));
     
     (* ЕСТЬ В КОДЕ НО НЕТ В ОПИСАНИИ:
     JwtTokenRegistrator: num;
@@ -110,6 +111,8 @@ Datatype:
   | TypeNumList
   | TypeNumOption
   | TypeNumListList
+  | TypeNumStringList
+  | TypeWord8List
 End
 
 Datatype:
@@ -120,6 +123,8 @@ Datatype:
   | SCNumListList ((num list) list)
   | SCNumList (num list)
   | SCNumOption (num option)
+  | SCNumStringList ((num # string) list)
+  | SCWord8List (word8 list)
 End
 
 Definition typeOf_def:
@@ -129,7 +134,9 @@ Definition typeOf_def:
   typeOf (SCBool _) = TypeBool ∧
   typeOf (SCNumList _) = TypeNumList ∧
   typeOf (SCNumOption _) = TypeNumOption ∧
-  typeOf (SCNumListList _) = TypeNumListList
+  typeOf (SCNumListList _) = TypeNumListList ∧
+  typeOf (SCNumStringList _) = TypeNumStringList ∧
+  typeOf (SCWord8List _) = TypeWord8List
 End
 
 Definition check_types_def:
