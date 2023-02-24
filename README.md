@@ -1,6 +1,7 @@
 # deg_HOL4_verification
 
 Имплементация и верификация смарт-контракта ДЭГ в HOL4.
+https://github.com/cikrf/deg2021/tree/master/contracts
 
 Свойства, которые планируем доказать:
 
