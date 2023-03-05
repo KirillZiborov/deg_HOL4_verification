@@ -13,18 +13,22 @@ val _ = ParseExtras.temp_tight_equality ();
 
 val const_defs = [
   (* Errors: *)
-  Define `GENERAL_ERROR = (1:num)(*"Type error"*)`,
-  Define `BAD_STATUS = (2:num)(*"Status error"*)`,
-  Define `EXTRACT_ERROR = (3:num)(*"Monadic_EL extract error"*)`,
-  Define `ERR_TYPE_CONV = (4:num)(*"Type conversion error"*)`,
-  Define `WRN_PARAMS = (5:num)(*"Wrong params"*)`,
-  Define `AUTHENTIFICATION_ERROR = (6:num)(*"Authentification failed"*)`,
-  Define `VOTING_NOT_STARTED = (7:num)(*"Voting not started"*)`,
-  Define `START_DATE_ALREADY_SET = (8:num)(*"Start date is already set"*)`,
-  Define `BLINDSIG_ERROR = (9:num)(*"Bling signature is not correct"*)`, 
-  Define `ALREADY_VOTED = (10:num)(*"You have already voted!"*)`,
-  Define `VOTING_NOT_FINISHED = (11:num)(*"Voting not finished"*)`,
-  Define `COMMISSION_SECRET_KEY_IS_INCORRECT = (12:num)(*"Commission secret key is incorrect"*)`
+  Define `WRN_PARAMS = (1:num)(*"Wrong params"*)`,
+  Define `RequiredParamIsMissing = (2:num)(*"Monadic_EL extract error, some parameter is missing"*)`,
+  Define `RequiredParamValueMissing = (3:num)(*"Type conversion error, some parameter type is incorrect"*)`,
+  Define `ServersDoNotContainSenderPubKey = (4:num)(*"Couldn't find the server that contains sender"*)`,
+  Define `ServersListIsEmpty = (5:num)(*"Servers list is empty"*)`,
+  Define `VotingIsNotInProgress = (6:num)(*"Voting is not in progress (has already finished or not yet started)"*)`,
+  Define `VotingAlreadyStarted = (7:num)(*"Voting has already started"*)`,
+  Define `SenderIsNotVotingRegistrator = (8:num)(*"Sender is not the voting registrator"*)`,
+  Define `StartDateAlreadyInStateError = (9:num)(*"Start date already in state"*)`,
+  Define `SenderIsNotBlindSigIssueRegistrator = (10:num)(*"Sender is not the blind sig issue registrator"*)`,
+  Define `EmptyStartDateError = (11:num)(*""Start date must be in state before operation starts""*)`,
+  Define `StartDateHasNotComeYet = (12:num)(*"Start date has not come yet"*)`,
+  Define `BlindSigIsNotEqual = (13:num)(*"Existing 'blindSig' value is not equal to new value"*)`, 
+  Define `RevoteIsBlockedError = (14:num)(*"Revote is blocked"*)`,
+  Define `VotingIsNotYetFinished= (15:num)(*"Voting is not yet finished (is in progress or not yet started)"*)`,
+  Define `InvalidCommissionSecretKey = (12:num)(*"Commission secret key doesn't match with the commission key from the state"*)`
 ];
 
 Definition monadic_EL_def:
@@ -52,7 +56,7 @@ set_state_dkgKey (s :  string): (State, unit, Exn) M
 End
 
 Definition set_state_decryption_def:
-set_state_decryption (s : num): (State, unit, Exn) M
+set_state_decryption (s : (num # num) list): (State, unit, Exn) M
   = λ state. let new_state = state with decryption := s in (Success (), new_state)
 End
 
@@ -87,9 +91,9 @@ Definition set_state_votersListAdd_def:
   = λ state. let new_state = state with votersListAdd := p in (Success (), new_state)
 End
 
-Definition set_state_removeFromVotersList_def:
-  set_state_removeFromVotersList (p : (num # string) list): (State, unit, Exn) M
-  = λ state. let new_state = state with removeFromVotersList := p in (Success (), new_state)
+Definition set_state_votersListRemove_def:
+  set_state_votersListRemove (p : (num # string) list): (State, unit, Exn) M
+  = λ state. let new_state = state with votersListRemove := p in (Success (), new_state)
 End
 
 Definition set_state_blindSig_def:
@@ -141,56 +145,56 @@ Definition scvalue_to_num_def:
 scvalue_to_num (sc:SCvalue) : (State, num, Exn) M  =
   (λ (s:State). case sc of
     SCNum v => (Success v, s)  (*Success*)
-  | _ => (Failure (CFail ERR_TYPE_CONV), s)) (*Failure*)
+  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition scvalue_to_bool_def:
 scvalue_to_bool (sc:SCvalue) : (State, bool, Exn) M  =
   (λ (s:State). case sc of
     SCBool b => (Success b, s)  (*Success*)
-  | _ => (Failure (CFail ERR_TYPE_CONV), s)) (*Failure*)
+  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition scvalue_to_string_def:
 scvalue_to_string (sc:SCvalue) : (State, string, Exn) M  =
   (λ (s:State). case sc of
     SCString stri => (Success stri, s)  (*Success*)
-  | _ => (Failure (CFail ERR_TYPE_CONV), s)) (*Failure*)
+  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition scvalue_to_word8list_def:
 scvalue_to_word8list (sc:SCvalue) : (State, word8 list, Exn) M  =
   (λ (s:State). case sc of
     SCWord8List stri => (Success stri, s)  (*Success*)
-  | _ => (Failure (CFail ERR_TYPE_CONV), s)) (*Failure*)
+  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition scvalue_to_numlist_def:
 scvalue_to_numlist (sc:SCvalue) : (State, num list, Exn) M  =
   (λ (s:State). case sc of
     SCNumList nl => (Success nl, s)  (*Success*)
-  | _ => (Failure (CFail ERR_TYPE_CONV), s)) (*Failure*)
+  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition scvalue_to_numoption_def:
 scvalue_to_numoption (sc:SCvalue) : (State, num option, Exn) M  =
   (λ (s:State). case sc of
     SCNumOption no => (Success no, s)  (*Success*)
-  | _ => (Failure (CFail ERR_TYPE_CONV), s)) (*Failure*)
+  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition scvalue_to_numlistlist_def:
 scvalue_to_numlistlist (sc:SCvalue) : (State, num list list, Exn) M  =
   (λ (s:State). case sc of
     SCNumListList nll => (Success nll, s)  (*Success*)
-  | _ => (Failure (CFail ERR_TYPE_CONV), s)) (*Failure*)
+  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition scvalue_to_numstringlist_def:
 scvalue_to_numstringlist (sc:SCvalue) : (State, (num # string) list, Exn) M  =
   (λ (s:State). case sc of
     SCNumStringList nll => (Success nll, s)  (*Success*)
-  | _ => (Failure (CFail ERR_TYPE_CONV), s)) (*Failure*)
+  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition find_entity_def:
@@ -203,28 +207,28 @@ End
 Definition initiateVoting_def:
   initiateVoting (params : SCvalue list) : (State, SCvalue, Exn) M =
   do
-    assert  WRN_PARAMS (check_types params [TypeString; TypeNumListList; TypeString; TypeString; TypeNumOption; TypeNumOption; TypeNumList; TypeNumList; TypeNum; TypeNum; TypeBool]);
-    p0 <- monadic_EL EXTRACT_ERROR 0 params;
-    p1 <- monadic_EL EXTRACT_ERROR 1 params;
-    p2 <- monadic_EL EXTRACT_ERROR 2 params;
-    p3 <- monadic_EL EXTRACT_ERROR 3 params;
-    p4 <- monadic_EL EXTRACT_ERROR 4 params;
-    p5 <- monadic_EL EXTRACT_ERROR 5 params;
-    p6 <- monadic_EL EXTRACT_ERROR 6 params;
-    p7 <- monadic_EL EXTRACT_ERROR 7 params;
-    p8 <- monadic_EL EXTRACT_ERROR 8 params;
-    p9 <- monadic_EL EXTRACT_ERROR 9 params;
-    p10 <- monadic_EL EXTRACT_ERROR 10 params;
-    bulletinHash <- (scvalue_to_string p0);
-    dimension <- (scvalue_to_numlistlist p1);
-    blindSigModulo <- (scvalue_to_string p2);
-    blindSigExponent <- (scvalue_to_string p3);
-    dateStart <- (scvalue_to_numoption p4);
-    dateEnd <- (scvalue_to_numoption p5);
-    servers <- (scvalue_to_numlist p6);
-    votersListRegistrators <- (scvalue_to_numlist p7);
-    blindSigIssueRegistrator <- (scvalue_to_num p8);
-    pollId <- (scvalue_to_num p9);
+    assert  WRN_PARAMS (check_types params [TypeNum; TypeString; TypeNumListList; TypeNum; TypeNum; TypeNumOption; TypeNumOption; TypeNumList; TypeNumList; TypeNum;  TypeBool]);
+    p0 <- monadic_EL RequiredParamIsMissing 0 params;
+    p1 <- monadic_EL RequiredParamIsMissing 1 params;
+    p2 <- monadic_EL RequiredParamIsMissing 2 params;
+    p3 <- monadic_EL RequiredParamIsMissing 3 params;
+    p4 <- monadic_EL RequiredParamIsMissing 4 params;
+    p5 <- monadic_EL RequiredParamIsMissing 5 params;
+    p6 <- monadic_EL RequiredParamIsMissing 6 params;
+    p7 <- monadic_EL RequiredParamIsMissing 7 params;
+    p8 <- monadic_EL RequiredParamIsMissing 8 params;
+    p9 <- monadic_EL RequiredParamIsMissing 9 params;
+    p10 <- monadic_EL RequiredParamIsMissing 10 params;
+    pollId <- (scvalue_to_num p0);
+    bulletinHash <- (scvalue_to_string p1);
+    dimension <- (scvalue_to_numlistlist p2);
+    blindSigModulo <- (scvalue_to_num p3);
+    blindSigExponent <- (scvalue_to_num p4);
+    dateStart <- (scvalue_to_numoption p5);
+    dateEnd <- (scvalue_to_numoption p6);
+    servers <- (scvalue_to_numlist p7);
+    votersListRegistrators <- (scvalue_to_numlist p8);
+    blindSigIssueRegistrator <- (scvalue_to_num p9);
     isRevoteBlocked <- (scvalue_to_bool p10); 
     
     state <- get_state;
@@ -242,10 +246,14 @@ Definition updateServerList_def:
   updateServerList (params : SCvalue list) : (State, SCvalue, Exn) M =
   do
     assert  WRN_PARAMS (check_types params [TypeNumList]);
-    p0 <- monadic_EL EXTRACT_ERROR 0 params;
+    p0 <- monadic_EL RequiredParamIsMissing 0 params;
     servers <- (scvalue_to_numlist p0);
-    
+    assert ServersListIsEmpty (servers ≠ []);
+
     state <- get_state;
+    server_option <<- (find_entity state.servers state.context.msg_sender);
+    assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
+    
     _ <- set_state_servers servers;
     return(SCUnit);
   od
@@ -256,17 +264,17 @@ Definition addMainKey_def:
   addMainKey (params : SCvalue list) : (State, SCvalue, Exn) M =
   do
     assert  WRN_PARAMS (check_types params [TypeString; TypeString; TypeString]);
-    p0 <- monadic_EL EXTRACT_ERROR 0 params;
-    p1 <- monadic_EL EXTRACT_ERROR 1 params;
-    p2 <- monadic_EL EXTRACT_ERROR 2 params;
+    p0 <- monadic_EL RequiredParamIsMissing 0 params;
+    p1 <- monadic_EL RequiredParamIsMissing 1 params;
+    p2 <- monadic_EL RequiredParamIsMissing 2 params;
     
     state <- get_state;    
     server_option <<- (find_entity state.servers state.context.msg_sender);
-    assert AUTHENTIFICATION_ERROR (server_option ≠ NONE);
+    assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
     case (state.votingBase.dateStart) of
-      NONE   => assert VOTING_NOT_STARTED (state.votingBase.status = Active) |
+      NONE   => assert VotingIsNotInProgress (state.votingBase.status = Active) |
       SOME t =>
-    assert VOTING_NOT_STARTED ((t > state.context.block_timestamp) /\ (state.votingBase.status = Active));
+    assert VotingAlreadyStarted ((t > state.context.block_timestamp) /\ (state.votingBase.status = Active));
     
     mainKey <- (scvalue_to_string p0);
     comissionKey <- (scvalue_to_string p1);
@@ -283,11 +291,11 @@ Definition addVotersList_def:
   addVotersList (params : SCvalue list) : (State, SCvalue, Exn) M =
   do
     assert  WRN_PARAMS (check_types params [TypeString]);
-    p0 <- monadic_EL EXTRACT_ERROR 0 params;
+    p0 <- monadic_EL RequiredParamIsMissing 0 params;
     
     state <- get_state;    
     votersListRegistrator_option <<- (find_entity state.VotersListRegistrator state.context.msg_sender);
-    assert AUTHENTIFICATION_ERROR (votersListRegistrator_option ≠ NONE);
+    assert SenderIsNotVotingRegistrator (votersListRegistrator_option ≠ NONE);
     
     userIdHashes <- (scvalue_to_string p0);
 
@@ -304,18 +312,18 @@ Definition removeFromVotersList_def:
   removeFromVotersList (params : SCvalue list) : (State, SCvalue, Exn) M =
   do
     assert  WRN_PARAMS (check_types params [TypeString]);
-    p0 <- monadic_EL EXTRACT_ERROR 0 params;
+    p0 <- monadic_EL RequiredParamIsMissing 0 params;
     
     state <- get_state;    
     votersListRegistrator_option <<- (find_entity state.VotersListRegistrator state.context.msg_sender);
-    assert AUTHENTIFICATION_ERROR (votersListRegistrator_option ≠ NONE);
+    assert SenderIsNotVotingRegistrator (votersListRegistrator_option ≠ NONE);
     
     userIdHashes <- (scvalue_to_string p0);
 
     transaction_id <- generate_transaction_id;
 
-    updated_removedVoters <<- ((transaction_id, userIdHashes) :: state.removeFromVotersList);
-        _ <- set_state_removeFromVotersList updated_removedVoters;
+    updated_removedVoters <<- ((transaction_id, userIdHashes) :: state.votersListRemove);
+        _ <- set_state_votersListRemove updated_removedVoters;
     return(SCUnit);
   od
 End
@@ -325,11 +333,11 @@ Definition addToVotersList_def:
   addToVotersList (params : SCvalue list) : (State, SCvalue, Exn) M =
   do
     assert  WRN_PARAMS (check_types params [TypeString]);
-    p0 <- monadic_EL EXTRACT_ERROR 0 params;
+    p0 <- monadic_EL RequiredParamIsMissing 0 params;
     
     state <- get_state;    
     votersListRegistrator_option <<- (find_entity state.VotersListRegistrator state.context.msg_sender);
-    assert AUTHENTIFICATION_ERROR (votersListRegistrator_option ≠ NONE);
+    assert SenderIsNotVotingRegistrator (votersListRegistrator_option ≠ NONE);
     
     userIdHashes <- (scvalue_to_string p0);
 
@@ -348,9 +356,9 @@ Definition startVoting_def:
   do
     state <- get_state;    
     server_option <<- (find_entity state.servers state.context.msg_sender);
-    assert AUTHENTIFICATION_ERROR (server_option ≠ NONE);
+    assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
 
-    assert START_DATE_ALREADY_SET (state.votingBase.dateStart = NONE);
+    assert StartDateAlreadyInStateError (state.votingBase.dateStart = NONE);
     
     voting_base <<- state.votingBase with dateStart := SOME state.context.block_timestamp;
     _ <- set_state_votingBase voting_base;
@@ -364,7 +372,7 @@ Definition blindSigIssue_def:
   blindSigIssue (params : SCvalue list) : (State, SCvalue, Exn) M =
   do
     assert  WRN_PARAMS (check_types params [TypeNumStringList]);
-    p0 <- monadic_EL EXTRACT_ERROR 0 params;
+    p0 <- monadic_EL RequiredParamIsMissing 0 params;
     data <- (scvalue_to_numstringlist p0);
 
     state <- get_state;
@@ -372,22 +380,20 @@ Definition blindSigIssue_def:
 
     if (state.blindSigIssueRegistrator ≠ state.context.msg_sender) 
     then do
-        _ <- set_state_blindSigFail (transaction_id, AUTHENTIFICATION_ERROR);
-        failwith AUTHENTIFICATION_ERROR;
+        _ <- set_state_blindSigFail (transaction_id, SenderIsNotBlindSigIssueRegistrator);
+        failwith SenderIsNotBlindSigIssueRegistrator;
       od
     else case (state.votingBase.dateStart) of
-      NONE   => if (state.votingBase.status = Active) then return ()
-                else do
-                 _ <- set_state_blindSigFail (transaction_id, VOTING_NOT_STARTED);
-                 failwith VOTING_NOT_STARTED;
-                     od |
-      SOME t => if ((t > state.context.block_timestamp) /\ (state.votingBase.status = Active))
-                  then return ()
-                  else do 
-                 _ <- set_state_blindSigFail (transaction_id, VOTING_NOT_STARTED);
-                 failwith VOTING_NOT_STARTED;
-                       od;
-
+      NONE   => do
+                 _ <- set_state_blindSigFail (transaction_id, EmptyStartDateError);
+                 failwith EmptyStartDateError;
+                od |
+      SOME t => if ((t < state.context.block_timestamp) /\ (state.votingBase.status = Active))
+                then return ()
+                else do 
+                 _ <- set_state_blindSigFail (transaction_id, StartDateHasNotComeYet);
+                 failwith StartDateHasNotComeYet;
+                     od;
 
     blindSigs <<- MAP (\(id:num, ms:string). <| userId:= id; maskedSig:= ms |>) data;
 
@@ -403,8 +409,8 @@ Definition vote_def:
   vote (params : SCvalue list) : (State, SCvalue, Exn) M =
   do
     assert  WRN_PARAMS (check_types params [TypeWord8List; TypeString]);
-    p0 <- monadic_EL EXTRACT_ERROR 0 params;
-    p1 <- monadic_EL EXTRACT_ERROR 1 params;
+    p0 <- monadic_EL RequiredParamIsMissing 0 params;
+    p1 <- monadic_EL RequiredParamIsMissing 1 params;
     vote <- (scvalue_to_word8list p0);
     sig <- (scvalue_to_string p1);
 
@@ -412,16 +418,23 @@ Definition vote_def:
     transaction_id <- generate_transaction_id;
 
     case (state.votingBase.dateStart) of
-      NONE   => assert VOTING_NOT_STARTED (state.votingBase.status = Active) |
-      SOME t =>
-    assert VOTING_NOT_STARTED ((t > state.context.block_timestamp) /\ (state.votingBase.status = Active));
+      NONE   => do
+                 _ <- set_state_voteFail (transaction_id, (state.context.msg_sender, EmptyStartDateError));
+                 failwith EmptyStartDateError;
+                od |
+      SOME t => if ((t < state.context.block_timestamp) /\ (state.votingBase.status = Active))
+                then return ()
+                else do 
+                 _ <- set_state_voteFail (transaction_id, (state.context.msg_sender, StartDateHasNotComeYet));
+                 failwith StartDateHasNotComeYet;
+                     od;
 
     vote_option <<- FIND (λ x. x.userId = state.context.msg_sender) state.votes;
 
     case (vote_option) of
       NONE   => return () |
-      SOME t => do assert ALREADY_VOTED (¬state.votingBase.isRevoteBlocked);
-                   assert BLINDSIG_ERROR (t.blindSig.maskedSig = sig);
+      SOME t => do assert RevoteIsBlockedError (¬state.votingBase.isRevoteBlocked);
+                   assert BlindSigIsNotEqual (t.blindSig.maskedSig = sig);
                 od;
 
     (* Проверка корректности слепой подписи *)
@@ -443,8 +456,7 @@ Definition finishVoting_def:
     vb <<- state.votingBase;
 
     server_option <<- (find_entity state.servers state.context.msg_sender);
-    assert AUTHENTIFICATION_ERROR (server_option ≠ NONE);
-    assert VOTING_NOT_STARTED (state.votingBase.status = Active);
+    assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
 
     case (state.votingBase.dateStart) of
       NONE   =>  do vb <<- vb with status := Halted; return () od |
@@ -467,10 +479,11 @@ Definition decryption_def:
     transaction_id <- generate_transaction_id;
 
     server_option <<- (find_entity state.servers state.context.msg_sender);
-    assert AUTHENTIFICATION_ERROR (server_option ≠ NONE);
-    assert VOTING_NOT_FINISHED (state.votingBase.status = Completed);
+    assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
+    assert VotingIsNotYetFinished(state.votingBase.status = Completed);
 
-    _ <- set_state_decryption transaction_id;
+    updated_decryption <<- ((transaction_id, transaction_id) :: state.decryption);
+    _ <- set_state_decryption updated_decryption;
     return(SCUnit);
   od
 End
@@ -479,17 +492,17 @@ End
 Definition commissionDecryption_def:
   commissionDecryption (params : SCvalue list) : (State, SCvalue, Exn) M =
   do
-    assert  WRN_PARAMS (check_types params [TypeString]);
-    p0 <- monadic_EL EXTRACT_ERROR 0 params;
+    assert WRN_PARAMS (check_types params [TypeString]);
+    p0 <- monadic_EL RequiredParamIsMissing 0 params;
     key <- (scvalue_to_string p0);
 
     state <- get_state;
     transaction_id <- generate_transaction_id;
 
     server_option <<- (find_entity state.servers state.context.msg_sender);
-    assert AUTHENTIFICATION_ERROR (server_option ≠ NONE);
-    assert VOTING_NOT_FINISHED (state.votingBase.status = Completed);
-    assert COMMISSION_SECRET_KEY_IS_INCORRECT (state.comissionKey = key);
+    assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
+    assert VotingIsNotYetFinished(state.votingBase.status = Completed);
+    assert InvalidCommissionSecretKey (state.comissionKey = key);
 
     _ <- set_state_commission_decryption transaction_id;
     return(SCUnit);
@@ -501,16 +514,18 @@ Definition results_def:
   results (params : SCvalue list) : (State, SCvalue, Exn) M =
   do
     assert  WRN_PARAMS (check_types params [TypeNumList]);
-    p0 <- monadic_EL EXTRACT_ERROR 0 params;
+    p0 <- monadic_EL RequiredParamIsMissing 0 params;
     results <- (scvalue_to_numlist p0);
 
     state <- get_state;
 
     server_option <<- (find_entity state.servers state.context.msg_sender);
-    assert AUTHENTIFICATION_ERROR (server_option ≠ NONE);
-    assert VOTING_NOT_FINISHED (state.votingBase.status = Completed);
+    assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
+    assert VotingIsNotYetFinished (state.votingBase.status = Completed);
 
     _ <- set_state_results results;
     return(SCUnit);
   od
 End
+
+val _ = export_theory();

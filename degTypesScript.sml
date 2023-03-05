@@ -19,34 +19,14 @@ Datatype:
     pollId: num;
     bulletinHash: string; 
     dimension: (num list) list;
-    blindSigModulo: string; 
-    blindSigExponent: string; 
+    blindSigModulo: num; 
+    blindSigExponent: num; 
     dateStart: num option;
     dateEnd: num option; 
     status: VotingStatus;
     isRevoteBlocked: bool; 
-    
-    (* 
-    ЕСТЬ В КОДЕ НО НЕТ В ОПИСАНИИ:
-    startDateIssueBallots: Option[Instant],
-    stopDateIssueBallots: Option[Instant] 
-
-    ЕСТЬ В ОПИСАНИИ НО НЕТ В КОДЕ:
-    ready: bool; *)
     |>
 End
-
-(* Datatype:
-  votersList = <|
-    userIdHashes: string;
-    
-    (* 
-    ЕСТЬ В ОПИСАНИИ НО НЕТ В КОДЕ: 
-    PrimaryUikRegionCode: num;
-    PrimaryUikNumber: num; *)
-    |>
-End
-*)
 
 Datatype:
 blindSig = <|
@@ -88,18 +68,14 @@ Datatype:
     VotersListRegistrator: num list; 
     blindSigIssueRegistrator: num;
     IssueBallotsRegistrator: num;
-    decryption: num;
+    decryption: (num # num) list;
 
     votersList: (num # string) list;
     votersListAdd: (num # string) list;
-    removeFromVotersList: (num # string) list;
+    votersListRemove: (num # string) list;
     blindSig: (num # blindSig list) list;
     blindSigFail: (num # num); 
     voteFail: (num # (num # num));
-    
-    (* ЕСТЬ В КОДЕ НО НЕТ В ОПИСАНИИ:
-    JwtTokenRegistrator: num;
-    BallotReceivedCert: string *)
     |>
 End
 
