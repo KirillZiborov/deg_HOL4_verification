@@ -55,27 +55,31 @@ Datatype:
   State = <|
     context: Context;    
     transactionCount: num;
-
-    votes: vote list;
-    comissionKey: string;
-    commisionDecryption: num;
-    dkgKey: string;
-    mainKey: string;
-    results: num list;
-    servers: num list;
+    
     votingBase: votingBase;
 
+    servers: num list;
     VotersListRegistrator: num list; 
     blindSigIssueRegistrator: num;
-    IssueBallotsRegistrator: num;
-    decryption: (num # num) list;
+
+    comissionKey: string;
+    dkgKey: string;
+    mainKey: string;
 
     votersList: (num # string) list;
     votersListAdd: (num # string) list;
     votersListRemove: (num # string) list;
+
     blindSig: (num # blindSig list) list;
-    blindSigFail: (num # num); 
-    voteFail: (num # (num # num));
+    votes: vote list;
+    
+    decryption: (num # num) list;
+    commisionDecryption: num;
+    
+    results: num list;    
+    
+    blindSigFail: (num # string) list; 
+    voteFail: (num # (num # string)) list;
     |>
 End
 
@@ -122,18 +126,18 @@ End
 Type state_references = ``:State``
 
 Datatype:
-  Exn = CFail num
+  Exn = Fail string
 End
 
 val config =  global_state_config
               |> with_state ``:state_references``
               |> with_exception ``:Exn``;
-Overload failwith = ``raise_CFail``
-Overload fail = ``failwith : num -> State -> (α, Exn) exc # State``  (*α = SCvalue*)
+Overload failwith = ``raise_Fail``
+Overload fail = ``failwith : string -> State -> (α, Exn) exc # State``  (*α = SCvalue*)
 val _ = start_translation config;
 
 Definition assert_def:
-  assert (errstr:num) (b:bool) : (state_references, unit, Exn) M =
+  assert (errstr:string) (b:bool) : (state_references, unit, Exn) M =
     if b then
       return ()
     else

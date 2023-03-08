@@ -13,22 +13,22 @@ val _ = ParseExtras.temp_tight_equality ();
 
 val const_defs = [
   (* Errors: *)
-  Define `WRN_PARAMS = (1:num)(*"Wrong params"*)`,
-  Define `RequiredParamIsMissing = (2:num)(*"Monadic_EL extract error, some parameter is missing"*)`,
-  Define `RequiredParamValueMissing = (3:num)(*"Type conversion error, some parameter type is incorrect"*)`,
-  Define `ServersDoNotContainSenderPubKey = (4:num)(*"Couldn't find the server that contains sender"*)`,
-  Define `ServersListIsEmpty = (5:num)(*"Servers list is empty"*)`,
-  Define `VotingIsNotInProgress = (6:num)(*"Voting is not in progress (has already finished or not yet started)"*)`,
-  Define `VotingAlreadyStarted = (7:num)(*"Voting has already started"*)`,
-  Define `SenderIsNotVotingRegistrator = (8:num)(*"Sender is not the voting registrator"*)`,
-  Define `StartDateAlreadyInStateError = (9:num)(*"Start date already in state"*)`,
-  Define `SenderIsNotBlindSigIssueRegistrator = (10:num)(*"Sender is not the blind sig issue registrator"*)`,
-  Define `EmptyStartDateError = (11:num)(*""Start date must be in state before operation starts""*)`,
-  Define `StartDateHasNotComeYet = (12:num)(*"Start date has not come yet"*)`,
-  Define `BlindSigIsNotEqual = (13:num)(*"Existing 'blindSig' value is not equal to new value"*)`, 
-  Define `RevoteIsBlockedError = (14:num)(*"Revote is blocked"*)`,
-  Define `VotingIsNotYetFinished= (15:num)(*"Voting is not yet finished (is in progress or not yet started)"*)`,
-  Define `InvalidCommissionSecretKey = (12:num)(*"Commission secret key doesn't match with the commission key from the state"*)`
+  Define `WRN_PARAMS = "Wrong params"`,
+  Define `RequiredParamIsMissing = "Monadic_EL extract error, some parameter is missing"`,
+  Define `RequiredParamValueMissing = "Type conversion error, some parameter type is incorrect"`,
+  Define `ServersDoNotContainSenderPubKey = "Couldn't find the server that contains sender"`,
+  Define `ServersListIsEmpty = "Servers list is empty"`,
+  Define `VotingIsNotInProgress = "Voting is not in progress (has already finished or not yet started)"`,
+  Define `VotingAlreadyStarted = "Voting has already started"`,
+  Define `SenderIsNotVotingRegistrator = "Sender is not the voting registrator"`,
+  Define `StartDateAlreadyInStateError = "Start date already in state"`,
+  Define `SenderIsNotBlindSigIssueRegistrator = "Sender is not the blind sig issue registrator"`,
+  Define `EmptyStartDateError = "Start date must be in state before operation starts"`,
+  Define `StartDateHasNotComeYet = "Start date has not come yet"`,
+  Define `BlindSigIsNotEqual = "Existing 'blindSig' value is not equal to new value"`, 
+  Define `RevoteIsBlockedError = "Revote is blocked"`,
+  Define `VotingIsNotYetFinished= "Voting is not yet finished (is in progress or not yet started)"`,
+  Define `InvalidCommissionSecretKey = "Commission secret key doesn't match with the commission key from the state"`
 ];
 
 Definition monadic_EL_def:
@@ -108,12 +108,12 @@ End
 
 
 Definition set_state_blindSigFail_def:
-  set_state_blindSigFail (p : (num # num)): (State, unit, Exn) M
+  set_state_blindSigFail (p : (num # string) list): (State, unit, Exn) M
   = λ state. let new_state = state with blindSigFail := p in (Success (), new_state)
 End
 
 Definition set_state_voteFail_def:
-  set_state_voteFail (p : (num # (num # num))): (State, unit, Exn) M
+  set_state_voteFail (p : (num # (num # string)) list): (State, unit, Exn) M
   = λ state. let new_state = state with voteFail := p in (Success (), new_state)
 End
 
@@ -145,56 +145,56 @@ Definition scvalue_to_num_def:
 scvalue_to_num (sc:SCvalue) : (State, num, Exn) M  =
   (λ (s:State). case sc of
     SCNum v => (Success v, s)  (*Success*)
-  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
+  | _ => (Failure (Fail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition scvalue_to_bool_def:
 scvalue_to_bool (sc:SCvalue) : (State, bool, Exn) M  =
   (λ (s:State). case sc of
     SCBool b => (Success b, s)  (*Success*)
-  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
+  | _ => (Failure (Fail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition scvalue_to_string_def:
 scvalue_to_string (sc:SCvalue) : (State, string, Exn) M  =
   (λ (s:State). case sc of
     SCString stri => (Success stri, s)  (*Success*)
-  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
+  | _ => (Failure (Fail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition scvalue_to_word8list_def:
 scvalue_to_word8list (sc:SCvalue) : (State, word8 list, Exn) M  =
   (λ (s:State). case sc of
     SCWord8List stri => (Success stri, s)  (*Success*)
-  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
+  | _ => (Failure (Fail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition scvalue_to_numlist_def:
 scvalue_to_numlist (sc:SCvalue) : (State, num list, Exn) M  =
   (λ (s:State). case sc of
     SCNumList nl => (Success nl, s)  (*Success*)
-  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
+  | _ => (Failure (Fail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition scvalue_to_numoption_def:
 scvalue_to_numoption (sc:SCvalue) : (State, num option, Exn) M  =
   (λ (s:State). case sc of
     SCNumOption no => (Success no, s)  (*Success*)
-  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
+  | _ => (Failure (Fail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition scvalue_to_numlistlist_def:
 scvalue_to_numlistlist (sc:SCvalue) : (State, num list list, Exn) M  =
   (λ (s:State). case sc of
     SCNumListList nll => (Success nll, s)  (*Success*)
-  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
+  | _ => (Failure (Fail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition scvalue_to_numstringlist_def:
 scvalue_to_numstringlist (sc:SCvalue) : (State, (num # string) list, Exn) M  =
   (λ (s:State). case sc of
     SCNumStringList nll => (Success nll, s)  (*Success*)
-  | _ => (Failure (CFail RequiredParamValueMissing), s)) (*Failure*)
+  | _ => (Failure (Fail RequiredParamValueMissing), s)) (*Failure*)
 End
 
 Definition find_entity_def:
@@ -380,18 +380,21 @@ Definition blindSigIssue_def:
 
     if (state.blindSigIssueRegistrator ≠ state.context.msg_sender) 
     then do
-        _ <- set_state_blindSigFail (transaction_id, SenderIsNotBlindSigIssueRegistrator);
+        updated_blindSigFail <<- ((transaction_id, SenderIsNotBlindSigIssueRegistrator) :: state.blindSigFail);
+        _ <- set_state_blindSigFail updated_blindSigFail;
         failwith SenderIsNotBlindSigIssueRegistrator;
       od
     else case (state.votingBase.dateStart) of
       NONE   => do
-                 _ <- set_state_blindSigFail (transaction_id, EmptyStartDateError);
+                updated_blindSigFail <<- ((transaction_id, EmptyStartDateError) :: state.blindSigFail);
+                _ <- set_state_blindSigFail updated_blindSigFail;
                  failwith EmptyStartDateError;
                 od |
       SOME t => if ((t < state.context.block_timestamp) /\ (state.votingBase.status = Active))
                 then return ()
-                else do 
-                 _ <- set_state_blindSigFail (transaction_id, StartDateHasNotComeYet);
+                else do
+                 updated_blindSigFail <<- ((transaction_id, StartDateHasNotComeYet) :: state.blindSigFail);
+                 _ <- set_state_blindSigFail updated_blindSigFail;
                  failwith StartDateHasNotComeYet;
                      od;
 
@@ -419,13 +422,14 @@ Definition vote_def:
 
     case (state.votingBase.dateStart) of
       NONE   => do
-                 _ <- set_state_voteFail (transaction_id, (state.context.msg_sender, EmptyStartDateError));
+                 updated_voteFail <<- ((transaction_id, (state.context.msg_sender, EmptyStartDateError)) :: state.voteFail);
+                  _ <- set_state_voteFail updated_voteFail;
                  failwith EmptyStartDateError;
                 od |
-      SOME t => if ((t < state.context.block_timestamp) /\ (state.votingBase.status = Active))
-                then return ()
-                else do 
-                 _ <- set_state_voteFail (transaction_id, (state.context.msg_sender, StartDateHasNotComeYet));
+      SOME t => if ((t < state.context.block_timestamp) /\ (state.votingBase.status = Active)) then return ()
+                else do
+                 updated_voteFail <<- ((transaction_id, (state.context.msg_sender, StartDateHasNotComeYet)) :: state.voteFail);
+                 _ <- set_state_voteFail updated_voteFail;
                  failwith StartDateHasNotComeYet;
                      od;
 
@@ -433,9 +437,18 @@ Definition vote_def:
 
     case (vote_option) of
       NONE   => return () |
-      SOME t => do assert RevoteIsBlockedError (¬state.votingBase.isRevoteBlocked);
-                   assert BlindSigIsNotEqual (t.blindSig.maskedSig = sig);
-                od;
+      SOME t => if (¬state.votingBase.isRevoteBlocked) 
+                then if (t.blindSig.maskedSig = sig) then return ()
+                     else do
+                      updated_voteFail <<- ((transaction_id, (state.context.msg_sender, BlindSigIsNotEqual)) :: state.voteFail);
+                      _ <- set_state_voteFail updated_voteFail;
+                      failwith BlindSigIsNotEqual;
+                          od
+                else do
+                 updated_voteFail <<- ((transaction_id, (state.context.msg_sender, RevoteIsBlockedError)) :: state.voteFail);
+                  _ <- set_state_voteFail updated_voteFail;
+                 failwith RevoteIsBlockedError;
+                     od;
 
     (* Проверка корректности слепой подписи *)
     
