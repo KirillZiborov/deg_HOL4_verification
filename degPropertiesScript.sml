@@ -184,7 +184,7 @@ val UNDISCH_ALL = FOR_ALL_HYP UNDISCH_TAC
 val SYM_TAC : tactic = irule EQ_SYM
 
 
-Theorem results_status_error:
+Theorem results_params_error:
 ∀ state. ∀  params.   
 (results params state  = fail WRN_PARAMS state) ⇔ (¬(check_types params [TypeNumList]))
 Proof
@@ -199,6 +199,35 @@ Proof
   simp [raise_Fail_def, check_types_def]>>
   rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
   EVAL_TAC >> every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]
+QED
+
+Theorem results_authentification_error:
+∀ state. ∀  params.
+(results params state  = fail ServersDoNotContainSenderPubKey state) ⇔ 
+(check_types params [TypeNumList] ∧
+∃ l. params = [SCNumList l] ∧
+find_entity state.servers state.context.msg_sender = NONE) 
+(* попробовать доказать и в таком виде:  ¬(MEM state.context.msg_sender state.servers) *)
+Proof  
+  rw []>>
+  simp [results_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >>every_case_tac >>
   fs [ml_monadBaseTheory.st_ex_bind_def] >>
   fs [ml_monadBaseTheory.st_ex_return_def] >>
   fs [boolTheory.FUN_EQ_THM] >>
@@ -237,5 +266,15 @@ Proof
   fs [raise_Fail_def, check_types_def]>>
   rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]
 QED
+
+(* TO DO:
+
+1) Доказать что функция initiateVoting выдаст ошибку WRN_PARAMS в случае вызова с неправильными параметрами
+2) Доказать что функция vote выдаст ошибку WRN_PARAMS в случае вызова с неправильными параметрами 
+3) Доказать что функции startVoting и finishVoting выдадут ошибку ServersDoNotContainSenderPubKey в случае вызова не от сервера
+4) Доказать что функция blindSigIsuue выдаст ошибку WRN_PARAMS в случае вызова с неправильными параметрами  
+5) Доказать что функция blindSigIsuue выдаст ошибку SenderIsNotBlindSigIssueRegistrator в случае вызова не от BlindSigIssueRegistrator + что эта ошибка сохранится в ключе стейта blindSigFail
+6) Доказать что функция blindSigIsuue выдаст ошибки EmptyStartDateError и StartDateHasNotComeYet в случае вызова при неустановленной дате начала голосования и при вызове до начала голосования соответственно + что эта ошибка сохранится в ключе стейта blindSigFail
+7) Доказать что функция vote выдаст ошибку WRN_PARAMS в случае вызова с неправильными параметрами*)
 
 val _ = export_theory();

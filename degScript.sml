@@ -495,7 +495,7 @@ Definition decryption_def:
     assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
     assert VotingIsNotYetFinished(state.votingBase.status = Completed);
 
-    updated_decryption <<- ((transaction_id, transaction_id) :: state.decryption);
+    updated_decryption <<- ((transaction_id, state.context.msg_sender) :: state.decryption);
     _ <- set_state_decryption updated_decryption;
     return(SCUnit);
   od
