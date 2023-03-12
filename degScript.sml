@@ -28,7 +28,8 @@ val const_defs = [
   Define `BlindSigIsNotEqual = "Existing 'blindSig' value is not equal to new value"`, 
   Define `RevoteIsBlockedError = "Revote is blocked"`,
   Define `VotingIsNotYetFinished= "Voting is not yet finished (is in progress or not yet started)"`,
-  Define `InvalidCommissionSecretKey = "Commission secret key doesn't match with the commission key from the state"`
+  Define `InvalidCommissionSecretKey = "Commission secret key doesn't match with the commission key from the state"`,
+  Define `InvalidBlindSig = "Verification failed for blind signature"`
 ];
 
 Definition monadic_EL_def:
@@ -230,9 +231,11 @@ Definition initiateVoting_def:
     votersListRegistrators <- (scvalue_to_numlist p8);
     blindSigIssueRegistrator <- (scvalue_to_num p9);
     isRevoteBlocked <- (scvalue_to_bool p10); 
+
+    assert ServersListIsEmpty (servers ≠ []);
     
     state <- get_state;
-    voting_base <<- <|pollId:= pollId; bulletinHash:= bulletinHash; dimension:= dimension; blindSigModulo:= blindSigModulo; blindSigExponent:= blindSigExponent; dateStart:= dateStart; dateEnd:=dateEnd; isRevoteBlocked:=isRevoteBlocked; status:= Active|>; 
+    voting_base <<- <|pollId:= pollId; bulletinHash:= bulletinHash; dimension:= dimension; blindSigModulo:= blindSigModulo; blindSigExponent:= blindSigExponent; dateStart:= dateStart; dateEnd:= dateEnd; isRevoteBlocked:= isRevoteBlocked; status:= Active|>; 
     _ <- set_state_votingBase voting_base;
     _ <- set_state_servers servers;
     _ <- set_state_VotersListRegistrator votersListRegistrators;
@@ -411,11 +414,13 @@ End
 Definition vote_def:
   vote (params : SCvalue list) : (State, SCvalue, Exn) M =
   do
-    assert  WRN_PARAMS (check_types params [TypeWord8List; TypeString]);
+    assert  WRN_PARAMS (check_types params [TypeWord8List; TypeNum; TypeNum]);
     p0 <- monadic_EL RequiredParamIsMissing 0 params;
     p1 <- monadic_EL RequiredParamIsMissing 1 params;
+    p2 <- monadic_EL RequiredParamIsMissing 2 params;
     vote <- (scvalue_to_word8list p0);
-    sig <- (scvalue_to_string p1);
+    sig <- (scvalue_to_num p1);
+    fdh <- (scvalue_to_num p2);
 
     state <- get_state;
     transaction_id <- generate_transaction_id;
@@ -438,7 +443,7 @@ Definition vote_def:
     case (vote_option) of
       NONE   => return () |
       SOME t => if (¬state.votingBase.isRevoteBlocked) 
-                then if (t.blindSig.maskedSig = sig) then return ()
+                then if (t.blindSig = sig) then return ()
                      else do
                       updated_voteFail <<- ((transaction_id, (state.context.msg_sender, BlindSigIsNotEqual)) :: state.voteFail);
                       _ <- set_state_voteFail updated_voteFail;
@@ -451,9 +456,20 @@ Definition vote_def:
                      od;
 
     (* Проверка корректности слепой подписи *)
+    (* В HOL4-модели контракта мы предполагаем, что алгоритм FDH-СТРИБОГ-256 работает корректно и опускаем его реализацию.
+    Также мы предполагаем, что на вход функция vote получает помимо слепой подписи sig результат работы хэш-функции fdh 
+    и сравниваем его с result: *)
+
+    result <<- ($EXP sig state.votingBase.blindSigExponent) MOD state.votingBase.blindSigModulo; 
+    if (result = fdh) then return () 
+    else do  
+     updated_voteFail <<- ((transaction_id, (state.context.msg_sender, InvalidBlindSig)) :: state.voteFail);
+     _ <- set_state_voteFail updated_voteFail;
+     failwith RevoteIsBlockedError;
+         od;
+
     
-    updated_votes <<- ((<| userId := state.context.msg_sender; vote := vote; 
-                          blindSig := <| userId:= state.context.msg_sender; maskedSig:= sig |> |>) :: state.votes);
+    updated_votes <<- ((<| userId := state.context.msg_sender; vote := vote; blindSig :=  sig |> ) :: state.votes);
 
     _ <- set_state_votes updated_votes;
 
@@ -507,7 +523,7 @@ Definition commissionDecryption_def:
   do
     assert WRN_PARAMS (check_types params [TypeString]);
     p0 <- monadic_EL RequiredParamIsMissing 0 params;
-    key <- (scvalue_to_string p0);
+    resolvedPublicKey <- (scvalue_to_string p0);
 
     state <- get_state;
     transaction_id <- generate_transaction_id;
@@ -515,7 +531,12 @@ Definition commissionDecryption_def:
     server_option <<- (find_entity state.servers state.context.msg_sender);
     assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
     assert VotingIsNotYetFinished(state.votingBase.status = Completed);
-    assert InvalidCommissionSecretKey (state.comissionKey = key);
+
+    (* Проверка приватного ключа на публичном ключе state.comissionKey *)
+    (* В HOL4-модели контракта мы предполагаем, что алгоритм проверки приватного ключа на публичном ключе работает корректно и 
+    опускаем его реализацию.
+    Также мы предполагаем, что на вход функция получает сразу resolvedPublicKey, полученный из приватного ключа *)
+    assert InvalidCommissionSecretKey (state.comissionKey = resolvedPublicKey);
 
     _ <- set_state_commission_decryption transaction_id;
     return(SCUnit);

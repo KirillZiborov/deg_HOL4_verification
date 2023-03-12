@@ -39,7 +39,7 @@ Datatype:
   vote = <|
     userId: num;
     vote: word8 list;
-    blindSig: blindSig;
+    blindSig: num;
     |>;
 End
 
