@@ -24,7 +24,9 @@ Datatype:
     dateStart: num option;
     dateEnd: num option; 
     status: VotingStatus;
-    isRevoteBlocked: bool; 
+    isRevoteBlocked: bool;
+    startDateIssueBallots: num option;
+    stopDateIssueBallots: num option;
     |>
 End
 
@@ -61,6 +63,7 @@ Datatype:
     servers: num list;
     VotersListRegistrator: num list; 
     blindSigIssueRegistrator: num;
+    IssueBallotsRegistrator: num;
 
     comissionKey: string;
     dkgKey: string;

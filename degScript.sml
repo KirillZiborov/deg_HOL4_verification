@@ -29,7 +29,10 @@ val const_defs = [
   Define `RevoteIsBlockedError = "Revote is blocked"`,
   Define `VotingIsNotYetFinished= "Voting is not yet finished (is in progress or not yet started)"`,
   Define `InvalidCommissionSecretKey = "Commission secret key doesn't match with the commission key from the state"`,
-  Define `InvalidBlindSig = "Verification failed for blind signature"`
+  Define `InvalidBlindSig = "Verification failed for blind signature"`,
+  Define `IssueBallotsAlreadyStarted = "Issue ballots are already started"`,
+  Define `IssueBallotsAlreadyStopped = "Issue ballots are already stopped"`,
+  Define `SenderIsNotIssueBallotsRegistrator = "Sender is not the Issue ballots registrator"`
 ];
 
 Definition monadic_EL_def:
@@ -66,10 +69,14 @@ set_state_commission_decryption (s : num): (State, unit, Exn) M
   = λ state. let new_state = state with commisionDecryption := s in (Success (), new_state)
 End
 
-
 Definition set_state_blindSigIssueRegistrator_def:
 set_state_blindSigIssueRegistrator (bir : num): (State, unit, Exn) M
   = λ state. let new_state = state with blindSigIssueRegistrator := bir in (Success (), new_state)
+End
+
+Definition set_state_IssueBallotsRegistrator_def:
+set_state_IssueBallotsRegistrator (ibr : num): (State, unit, Exn) M
+  = λ state. let new_state = state with IssueBallotsRegistrator := ibr in (Success (), new_state)
 End
 
 Definition set_state_servers_def:
@@ -208,7 +215,7 @@ End
 Definition initiateVoting_def:
   initiateVoting (params : SCvalue list) : (State, SCvalue, Exn) M =
   do
-    assert  WRN_PARAMS (check_types params [TypeNum; TypeString; TypeNumListList; TypeNum; TypeNum; TypeNumOption; TypeNumOption; TypeNumList; TypeNumList; TypeNum;  TypeBool]);
+    assert  WRN_PARAMS (check_types params [TypeNum; TypeString; TypeNumListList; TypeNum; TypeNum; TypeNumOption; TypeNumOption; TypeNumList; TypeNumList; TypeNum; TypeNum; TypeBool]);
     p0 <- monadic_EL RequiredParamIsMissing 0 params;
     p1 <- monadic_EL RequiredParamIsMissing 1 params;
     p2 <- monadic_EL RequiredParamIsMissing 2 params;
@@ -220,6 +227,7 @@ Definition initiateVoting_def:
     p8 <- monadic_EL RequiredParamIsMissing 8 params;
     p9 <- monadic_EL RequiredParamIsMissing 9 params;
     p10 <- monadic_EL RequiredParamIsMissing 10 params;
+    p11 <- monadic_EL RequiredParamIsMissing 10 params;
     pollId <- (scvalue_to_num p0);
     bulletinHash <- (scvalue_to_string p1);
     dimension <- (scvalue_to_numlistlist p2);
@@ -230,16 +238,19 @@ Definition initiateVoting_def:
     servers <- (scvalue_to_numlist p7);
     votersListRegistrators <- (scvalue_to_numlist p8);
     blindSigIssueRegistrator <- (scvalue_to_num p9);
-    isRevoteBlocked <- (scvalue_to_bool p10); 
+    IssueBallotsRegistrator <- (scvalue_to_num p10); 
+    isRevoteBlocked <- (scvalue_to_bool p11);
 
     assert ServersListIsEmpty (servers ≠ []);
     
     state <- get_state;
-    voting_base <<- <|pollId:= pollId; bulletinHash:= bulletinHash; dimension:= dimension; blindSigModulo:= blindSigModulo; blindSigExponent:= blindSigExponent; dateStart:= dateStart; dateEnd:= dateEnd; isRevoteBlocked:= isRevoteBlocked; status:= Active|>; 
+    voting_base <<- <|pollId:= pollId; bulletinHash:= bulletinHash; dimension:= dimension; blindSigModulo:= blindSigModulo; blindSigExponent:= blindSigExponent; dateStart:= dateStart; dateEnd:= dateEnd; isRevoteBlocked:= isRevoteBlocked; status:= Active; startDateIssueBallots:= NONE;
+    stopDateIssueBallots:= NONE|>; 
     _ <- set_state_votingBase voting_base;
     _ <- set_state_servers servers;
     _ <- set_state_VotersListRegistrator votersListRegistrators;
     _ <- set_state_blindSigIssueRegistrator blindSigIssueRegistrator;
+    _ <- set_state_IssueBallotsRegistrator IssueBallotsRegistrator;
     return(SCUnit);
   od
 End
@@ -348,6 +359,46 @@ Definition addToVotersList_def:
 
     updated_addedVoters <<- ((transaction_id, userIdHashes) :: state.votersListAdd);
         _ <- set_state_votersListAdd updated_addedVoters;
+    return(SCUnit);
+  od
+End
+
+(* 104 *)
+Definition startIssueBallots_def:
+  startIssueBallots (params : SCvalue list) : (State, SCvalue, Exn) M =
+  do
+    assert  WRN_PARAMS (check_types params [TypeNum]);
+    p0 <- monadic_EL RequiredParamIsMissing 0 params;
+    
+    state <- get_state;
+
+    assert SenderIsNotIssueBallotsRegistrator (state.IssueBallotsRegistrator = state.context.msg_sender);
+    assert IssueBallotsAlreadyStarted (state.votingBase.startDateIssueBallots = NONE);
+
+    startDateIssueBallots <- (scvalue_to_num p0);
+
+    vb <<- state.votingBase with startDateIssueBallots:= SOME startDateIssueBallots;
+        _ <- set_state_votingBase vb;
+    return(SCUnit);
+  od
+End
+
+(* 104 *)
+Definition stopIssueBallots_def:
+  stopIssueBallots (params : SCvalue list) : (State, SCvalue, Exn) M =
+  do
+    assert  WRN_PARAMS (check_types params [TypeNum]);
+    p0 <- monadic_EL RequiredParamIsMissing 0 params;
+    
+    state <- get_state;
+
+    assert SenderIsNotIssueBallotsRegistrator (state.IssueBallotsRegistrator = state.context.msg_sender);
+    assert IssueBallotsAlreadyStopped (state.votingBase.stopDateIssueBallots = NONE);
+
+    stopDateIssueBallots <- (scvalue_to_num p0);
+
+    vb <<- state.votingBase with stopDateIssueBallots:= SOME stopDateIssueBallots;
+        _ <- set_state_votingBase vb;
     return(SCUnit);
   od
 End
