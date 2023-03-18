@@ -603,12 +603,15 @@ Definition results_def:
     results <- (scvalue_to_numlist p0);
 
     state <- get_state;
+    vb <<- state.votingBase;
 
     server_option <<- (find_entity state.servers state.context.msg_sender);
     assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
     assert VotingIsNotYetFinished (state.votingBase.status = Completed);
 
+    vb <<- vb with status := ResultsReceived;
     _ <- set_state_results results;
+    _ <- set_state_votingBase vb;
     return(SCUnit);
   od
 End

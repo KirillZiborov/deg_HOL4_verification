@@ -8,6 +8,7 @@ open wordsTheory
 open listTheory
 open degTypesTheory
 open degTheory
+open degChainTheory
 
 val _ = new_theory "degProperties";
 val _ = translation_extends "basisProg";
@@ -31,8 +32,48 @@ val const_defs = [
   Define `BlindSigIsNotEqual = "Existing 'blindSig' value is not equal to new value"`, 
   Define `RevoteIsBlockedError = "Revote is blocked"`,
   Define `VotingIsNotYetFinished= "Voting is not yet finished (is in progress or not yet started)"`,
-  Define `InvalidCommissionSecretKey = "Commission secret key doesn't match with the commission key from the state"`
+  Define `InvalidCommissionSecretKey = "Commission secret key doesn't match with the commission key from the state"`,
+  Define `InvalidBlindSig = "Verification failed for blind signature"`,
+  Define `IssueBallotsAlreadyStarted = "Issue ballots are already started"`,
+  Define `IssueBallotsAlreadyStopped = "Issue ballots are already stopped"`,
+  Define `SenderIsNotIssueBallotsRegistrator = "Sender is not the Issue ballots registrator"`
 ];
+
+Definition chooseFunction_def:
+chooseFunction (f : num) = 
+    (λparams. case (f : num) of
+      1 => updateServerList params
+    | 2 => addMainKey params
+    | 3 => startVoting
+    | 4 => blindSigIssue params 
+    | 5 => vote params
+    | 6 => finishVoting
+    | 7 => commissionDecryption params
+    | 8 => results params
+    |  _ => fail "No function to consider")
+End 
+
+Definition execute_def:
+execute (f:num) (params:SCvalue list) : (State, SCvalue, Exn) M =
+  do
+    v <- chooseFunction f params;
+    return v
+  od
+End
+
+Definition scReceive_def:
+  scReceive (data : Data) : (State, SCvalue, Exn) M = 
+    execute (get_functionSignature data) (get_params data) 
+End
+
+Definition scInit_def:
+  scInit (setup : Setup) : (State, SCvalue, Exn) M = 
+     initiateVoting (get_setupparams setup)
+End
+
+Definition SCdeg_def:
+  SCdeg = <| init := scInit; receive := scReceive|>
+End
 
 (* BEGIN tactics*)
 fun dummy_tac q : tactic
@@ -265,6 +306,37 @@ Proof
   fs [assert_def] >>
   fs [raise_Fail_def, check_types_def]>>
   rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]
+QED
+
+Theorem commissionKey_isFeasible:
+∀ e1 s1. 
+  get_envContracts e1 caddr = SOME SCdeg ∧ 
+  get_envContractStates e1 caddr = SOME s1 ∧
+  s1.votingBase.status = Active  ⇒
+  ∃ e2.
+  ChainStep e1 e2 ∧    
+  get_envContracts e2 caddr = SOME SCdeg ∧
+  ((THE (get_envContractStates e2 caddr)).votingBase.status = Active) ∧
+  ¬(get_envContractStates e2 caddr = NONE) ∧
+  ¬((THE (get_envContractStates e2 caddr)).commissionKey = "")  
+Proof
+  cheat
+QED
+
+
+
+Theorem successful_trace:
+∀ e1 s1. 
+  get_envContracts e1 caddr = SOME SCdeg ∧ 
+  get_envContractStates e1 caddr = SOME s1 ∧
+  s1.votingBase.status = Active ⇒
+  ∃ e.
+  ChainTrace e1 e ∧    
+  get_envContracts e caddr = SOME SCdeg ∧ 
+  (THE (get_envContractStates e caddr)).votingBase.status = ResultsReceived ∧ 
+  (THE (get_envContractStates e caddr)).commisionDecryption ≠ s1.commisionDecryption
+Proof
+  cheat
 QED
 
 (* TO DO:

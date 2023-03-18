@@ -8,23 +8,9 @@ open wordsTheory
 open listTheory
 open degTypesTheory
      
-val _ = new_theory "monadChain";
+val _ = new_theory "degChain";
 val _ = translation_extends "basisProg";
 val _ = ParseExtras.temp_tight_equality ();
-
-Datatype:
-    Address = Contract_address num | Client_address num
-End
-
-Definition take_address_def:
-  take_address (Contract_address n) = n ∧
-  take_address (Client_address n) = n
-End
-
-Definition address_is_contract_def:
-  address_is_contract (Contract_address num) = T ∧
-  address_is_contract (Client_address num) = F
-End
 
 Datatype :
   Data = <|functionSignature: num; params: SCvalue list |>
@@ -63,12 +49,12 @@ Definition get_receive_def:
 End
 
 Datatype:
-  ActionBody = Call Address Data | Deploy Contract Setup
+  ActionBody = Call num Data | Deploy Contract Setup
 End
 
 (* сам запрос к контракту *)
 Datatype :
-  Action = <| actFrom : Address; actType : ActionBody |> 
+  Action = <| actFrom : num; actType : ActionBody |> 
 End
 
 Definition get_actFrom_def:
@@ -79,12 +65,8 @@ Definition get_actType_def:
   get_actType = Action_actType
 End
 
-Definition act_is_from_account_def: 
-  act_is_from_account act = (address_is_contract (get_actFrom act) = F)
-End
-
 Datatype:
-  Environment = <| envContracts : (Address -> Contract option); envContractStates : (Address -> SCState option)|>
+  Environment = <| envContracts : (num -> Contract option); envContractStates : (num -> State option)|>
 End
 
 Definition get_envContracts_def:
@@ -110,20 +92,22 @@ Definition build_act_def :
 End
 
 Inductive ActionEvaluation:
-      (∀ prevEnv act newEnv to c setup s0 state. 
-      (address_is_contract to = T) ∧
+      (∀ prevEnv act newEnv to c setup s0 state.
       (get_envContracts prevEnv to = NONE) ∧
-      (act = build_act (Client_address s0.context.msgSender) (Deploy c setup)) ∧
-      (get_SCState (SND (get_init c setup s0)) = get_SCState state) ∧
-      (setup.code = state.context.storage)∧
-      (newEnv = set_contract_state to (get_SCState state) (add_contract to c prevEnv)) ==>
+      (act = build_act s0.context.msg_sender (Deploy c setup)) ∧
+      ((SND (get_init c setup s0) = state)) ∧
+      (state.context.block_timestamp > s0.context.block_timestamp) ∧
+      (state.context.block_number > s0.context.block_number) ∧      
+      (newEnv = set_contract_state to state (add_contract to c prevEnv)) ==>
       ActionEvaluation prevEnv act newEnv) ∧
       (∀ prevEnv act newEnv to c prevState data nextState.
       (get_envContracts prevEnv to = SOME c) ∧
-      (get_envContractStates prevEnv to = SOME (get_SCState prevState)) ∧
-      (act = build_act (Client_address prevState.context.msgSender) (Call to data)) ∧
-      (get_SCState (SND (get_receive c data prevState)) = get_SCState nextState) ∧
-      (newEnv = set_contract_state to (get_SCState nextState) prevEnv) ==>
+      (get_envContractStates prevEnv to = SOME prevState) ∧
+      (act = build_act prevState.context.msg_sender (Call to data)) ∧
+      (SND (get_receive c data prevState) = nextState) ∧
+      (nextState.context.block_timestamp > prevState.context.block_timestamp) ∧
+      (nextState.context.block_number > prevState.context.block_number) ∧
+      (newEnv = set_contract_state to nextState prevEnv) ==>
       ActionEvaluation prevEnv act newEnv)
 End
 

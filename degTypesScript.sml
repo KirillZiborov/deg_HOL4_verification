@@ -11,7 +11,7 @@ val _ = translation_extends "basisProg";
 val _ = ParseExtras.temp_tight_equality ();
 
 Datatype:
-  VotingStatus = Active | Halted | Completed
+  VotingStatus = Active | Halted | Completed | ResultsReceived
 End
 
 Datatype:
