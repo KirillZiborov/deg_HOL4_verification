@@ -347,6 +347,42 @@ QED
 4) Доказать что функция blindSigIsuue выдаст ошибку WRN_PARAMS в случае вызова с неправильными параметрами  
 5) Доказать что функция blindSigIsuue выдаст ошибку SenderIsNotBlindSigIssueRegistrator в случае вызова не от BlindSigIssueRegistrator + что эта ошибка сохранится в ключе стейта blindSigFail
 6) Доказать что функция blindSigIsuue выдаст ошибки EmptyStartDateError и StartDateHasNotComeYet в случае вызова при неустановленной дате начала голосования и при вызове до начала голосования соответственно + что эта ошибка сохранится в ключе стейта blindSigFail
-7) Доказать что функция vote выдаст ошибку WRN_PARAMS в случае вызова с неправильными параметрами*)
+*)
+
+(* 5 *)
+Theorem blindSigIssue_authentification_error:
+∀ s1. ∀  params.
+(blindSigIssue params s1  = fail SenderIsNotBlindSigIssueRegistrator s3) ⇔ 
+(check_types params [TypeNumStringList] ∧
+∃ l. params = [SCNumStringList l] ∧
+(s1.blindSigIssueRegistrator ≠ s1.context.msg_sender) ∧
+(* (s2 = s1 with transactionCount := SUC s1.transactionCount) ∧
+(s3 = s2 with blindSigFail := ((s2.transactionCount, SenderIsNotBlindSigIssueRegistrator) :: s2.blindSigFail))) *)
+(s1 with  <|transactionCount := SUC s1.transactionCount; 
+           blindSigFail :=
+            (SUC s1.transactionCount,SenderIsNotBlindSigIssueRegistrator)::
+                s1.blindSigFail|> = s3))
+Proof 
+ rw [] >>
+  simp [blindSigIssue_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >>every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
+  fs [set_state_blindSigFail_def, SenderIsNotBlindSigIssueRegistrator_def, EmptyStartDateError_def, StartDateHasNotComeYet_def, WRN_PARAMS_def] >> fs const_defs
+QED
 
 val _ = export_theory();

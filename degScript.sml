@@ -227,7 +227,7 @@ Definition initiateVoting_def:
     p8 <- monadic_EL RequiredParamIsMissing 8 params;
     p9 <- monadic_EL RequiredParamIsMissing 9 params;
     p10 <- monadic_EL RequiredParamIsMissing 10 params;
-    p11 <- monadic_EL RequiredParamIsMissing 10 params;
+    p11 <- monadic_EL RequiredParamIsMissing 11 params;
     pollId <- (scvalue_to_num p0);
     bulletinHash <- (scvalue_to_string p1);
     dimension <- (scvalue_to_numlistlist p2);
