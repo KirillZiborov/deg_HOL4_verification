@@ -49,9 +49,9 @@ set_state_mainKey (s :  string): (State, unit, Exn) M
   = λ state. let new_state = state with mainKey := s in (Success (), new_state)
 End
 
-Definition set_state_comissionKey_def:
-set_state_comissionKey (s :  string): (State, unit, Exn) M
-  = λ state. let new_state = state with comissionKey := s in (Success (), new_state)
+Definition set_state_commissionKey_def:
+set_state_commissionKey (s :  string): (State, unit, Exn) M
+  = λ state. let new_state = state with commissionKey := s in (Success (), new_state)
 End
 
 Definition set_state_dkgKey_def:
@@ -66,7 +66,7 @@ End
 
 Definition set_state_commission_decryption_def:
 set_state_commission_decryption (s : num): (State, unit, Exn) M
-  = λ state. let new_state = state with commisionDecryption := s in (Success (), new_state)
+  = λ state. let new_state = state with commissionDecryption := s in (Success (), new_state)
 End
 
 Definition set_state_blindSigIssueRegistrator_def:
@@ -291,10 +291,10 @@ Definition addMainKey_def:
     assert VotingAlreadyStarted ((t > state.context.block_timestamp) /\ (state.votingBase.status = Active));
     
     mainKey <- (scvalue_to_string p0);
-    comissionKey <- (scvalue_to_string p1);
+    commissionKey <- (scvalue_to_string p1);
     dkgKey <- (scvalue_to_string p2);
     _ <- set_state_mainKey mainKey;
-    _ <- set_state_comissionKey comissionKey;
+    _ <- set_state_commissionKey commissionKey;
     _ <- set_state_dkgKey dkgKey;
     return(SCUnit);
   od
@@ -583,11 +583,11 @@ Definition commissionDecryption_def:
     assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
     assert VotingIsNotYetFinished(state.votingBase.status = Completed);
 
-    (* Проверка приватного ключа на публичном ключе state.comissionKey *)
+    (* Проверка приватного ключа на публичном ключе state.commissionKey *)
     (* В HOL4-модели контракта мы предполагаем, что алгоритм проверки приватного ключа на публичном ключе работает корректно и 
     опускаем его реализацию.
     Также мы предполагаем, что на вход функция получает сразу resolvedPublicKey, полученный из приватного ключа *)
-    assert InvalidCommissionSecretKey (state.comissionKey = resolvedPublicKey);
+    assert InvalidCommissionSecretKey (state.commissionKey = resolvedPublicKey);
 
     _ <- set_state_commission_decryption transaction_id;
     return(SCUnit);

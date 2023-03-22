@@ -31,26 +31,15 @@ Datatype:
 End
 
 Datatype:
-blindSig = <|
-    userId: num;
-    maskedSig: string;
-    |>;
+  blindSig = <| userId: num; maskedSig: string |>;
 End
 
 Datatype:
-  vote = <|
-    userId: num;
-    vote: word8 list;
-    blindSig: num;
-    |>;
+  vote = <| userId: num; vote: word8 list; blindSig: num |>;
 End
 
 Datatype:
-  Context = <|
-    msg_sender: num;
-    block_number: num;
-    block_timestamp: num;
-  |>
+  Context = <| msg_sender: num; block_number: num; block_timestamp: num |>
 End
 
 Datatype:
@@ -65,7 +54,7 @@ Datatype:
     blindSigIssueRegistrator: num;
     IssueBallotsRegistrator: num;
 
-    comissionKey: string;
+    commissionKey: string;
     dkgKey: string;
     mainKey: string;
 
@@ -77,7 +66,7 @@ Datatype:
     votes: vote list;
     
     decryption: (num # num) list;
-    commisionDecryption: num;
+    commissionDecryption: num;
     
     results: num list;    
     

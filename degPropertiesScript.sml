@@ -15,29 +15,7 @@ val _ = translation_extends "basisProg";
 val _ = ParseExtras.temp_tight_equality ();
 
 (*CONSTS ------------------------------------------------------------------------ *)
-val const_defs = [
-  (* Errors: *)
-  Define `WRN_PARAMS = "Wrong params"`,
-  Define `RequiredParamIsMissing = "Monadic_EL extract error, some parameter is missing"`,
-  Define `RequiredParamValueMissing = "Type conversion error, some parameter type is incorrect"`,
-  Define `ServersDoNotContainSenderPubKey = "Couldn't find the server that contains sender"`,
-  Define `ServersListIsEmpty = "Servers list is empty"`,
-  Define `VotingIsNotInProgress = "Voting is not in progress (has already finished or not yet started)"`,
-  Define `VotingAlreadyStarted = "Voting has already started"`,
-  Define `SenderIsNotVotingRegistrator = "Sender is not the voting registrator"`,
-  Define `StartDateAlreadyInStateError = "Start date already in state"`,
-  Define `SenderIsNotBlindSigIssueRegistrator = "Sender is not the blind sig issue registrator"`,
-  Define `EmptyStartDateError = "Start date must be in state before operation starts"`,
-  Define `StartDateHasNotComeYet = "Start date has not come yet"`,
-  Define `BlindSigIsNotEqual = "Existing 'blindSig' value is not equal to new value"`, 
-  Define `RevoteIsBlockedError = "Revote is blocked"`,
-  Define `VotingIsNotYetFinished= "Voting is not yet finished (is in progress or not yet started)"`,
-  Define `InvalidCommissionSecretKey = "Commission secret key doesn't match with the commission key from the state"`,
-  Define `InvalidBlindSig = "Verification failed for blind signature"`,
-  Define `IssueBallotsAlreadyStarted = "Issue ballots are already started"`,
-  Define `IssueBallotsAlreadyStopped = "Issue ballots are already stopped"`,
-  Define `SenderIsNotIssueBallotsRegistrator = "Sender is not the Issue ballots registrator"`
-];
+val const_defs =  [BlindSigIsNotEqual_def, EmptyStartDateError_def, InvalidBlindSig_def, InvalidCommissionSecretKey_def, IssueBallotsAlreadyStarted_def, IssueBallotsAlreadyStopped_def, RequiredParamIsMissing_def, RequiredParamValueMissing_def, RevoteIsBlockedError_def, SenderIsNotBlindSigIssueRegistrator_def, SenderIsNotIssueBallotsRegistrator_def, SenderIsNotVotingRegistrator_def, ServersDoNotContainSenderPubKey_def, ServersListIsEmpty_def, StartDateAlreadyInStateError_def, StartDateHasNotComeYet_def, VotingAlreadyStarted_def, VotingIsNotInProgress_def, VotingIsNotYetFinished_def, WRN_PARAMS_def]
 
 Definition chooseFunction_def:
 chooseFunction (f : num) = 
@@ -285,7 +263,7 @@ Theorem results_status_error:
 (check_types params [TypeNumList] ∧
 ∃ l. params = [SCNumList l] ∧
 find_entity state.servers state.context.msg_sender ≠ NONE ∧
-¬(state.votingBase.status = Completed))
+state.votingBase.status ≠ Completed)
 Proof  
   rw []>>
   simp [results_def]>>
@@ -308,35 +286,122 @@ Proof
   rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]
 QED
 
+(* Свойство: При корректном функционировании системы итоги голосования должны быть подведены.*)
+
+Theorem help1:
+∀e caddr.
+¬(get_envContractStates e caddr = NONE) ⇒
+get_envContractStates e caddr = SOME (THE (get_envContractStates e caddr))
+Proof
+  rw [] >> Cases_on ‘get_envContractStates e caddr’ >> fs [] >> rw [THE_DEF]
+QED
+
 Theorem commissionKey_isFeasible:
 ∀ e1 s1. 
   get_envContracts e1 caddr = SOME SCdeg ∧ 
   get_envContractStates e1 caddr = SOME s1 ∧
-  s1.votingBase.status = Active  ⇒
-  ∃ e2.
+  s1.votingBase.status = Active ∧
+  s1.commissionDecryption = 0 ⇒
+  ∃ e2 key.
   ChainStep e1 e2 ∧    
   get_envContracts e2 caddr = SOME SCdeg ∧
+  get_envContractStates e2 caddr ≠ NONE ∧
   ((THE (get_envContractStates e2 caddr)).votingBase.status = Active) ∧
-  ¬(get_envContractStates e2 caddr = NONE) ∧
-  ¬((THE (get_envContractStates e2 caddr)).commissionKey = "")  
+  ((THE (get_envContractStates e2 caddr))commissionDecryption = 0) ∧
+  (THE (get_envContractStates e2 caddr)).commissionKey ≠ key  
 Proof
   cheat
 QED
 
+Theorem startDate_isFeasible:
+∀ e1 s1. 
+  get_envContracts e1 caddr = SOME SCdeg ∧ 
+  get_envContractStates e1 caddr = SOME s1 ∧
+  s1.votingBase.status = Active ∧ 
+  s1.commissionKey = key ∧
+  s1.commissionDecryption = 0 ⇒
+  ∃ e2 t.
+  ChainStep e1 e2 ∧    
+  get_envContracts e2 caddr = SOME SCdeg ∧
+  get_envContractStates e2 caddr ≠ NONE ∧
+  ((THE (get_envContractStates e2 caddr)).votingBase.status = Active) ∧
+  (THE (get_envContractStates e2 caddr)).votingBase.dateStart ≠ NONE ∧
+  ((THE (get_envContractStates e2 caddr))commissionDecryption = 0) ∧
+  (THE (get_envContractStates e2 caddr)).commissionKey = key  
+Proof
+  cheat
+QED
 
+Theorem stopDate_isFeasible:
+∀ e1 s1. 
+  get_envContracts e1 caddr = SOME SCdeg ∧ 
+  get_envContractStates e1 caddr = SOME s1 ∧
+  s1.votingBase.status = Active ∧ 
+  s1.commissionKey = key ∧
+  s1.commissionDecryption = 0 ∧
+  s1.votingBase.dateStart ≠ NONE ⇒
+  ∃ e2.
+  ChainStep e1 e2 ∧    
+  get_envContracts e2 caddr = SOME SCdeg ∧
+  get_envContractStates e2 caddr ≠ NONE ∧
+  ((THE (get_envContractStates e2 caddr)).votingBase.status = Completed) ∧
+  (THE (get_envContractStates e2 caddr)).commissionKey = key  
+Proof
+  cheat
+QED
+
+Theorem commissionDecryption_isFeasible:
+∀ e1 s1. 
+  get_envContracts e1 caddr = SOME SCdeg ∧ 
+  get_envContractStates e1 caddr = SOME s1 ∧
+  s1.commissionKey = key ∧
+  (s1.votingBase.status = Completed) ∧
+  s1.commissionDecryption = 0 ⇒
+  ∃ e2.
+  ChainStep e1 e2 ∧    
+  get_envContracts e2 caddr = SOME SCdeg ∧
+  get_envContractStates e2 caddr ≠ NONE ∧  
+  (THE (get_envContractStates e2 caddr)).commisionDecryption ≠ 0
+Proof
+  cheat
+QED
+
+Theorem resultsReceived_isFeasible:
+∀ e1 s1. 
+  get_envContracts e1 caddr = SOME SCdeg ∧ 
+  get_envContractStates e1 caddr = SOME s1 ∧
+  (s1.votingBase.status = Completed) ∧
+  s1.commissionDecryption ≠ 0 ⇒
+  ∃ e2.
+  ChainStep e1 e2 ∧    
+  get_envContracts e2 caddr = SOME SCdeg ∧
+  get_envContractStates e2 caddr ≠ NONE ∧ 
+  (THE (get_envContractStates e2 caddr)).votingBase.status = ResultsReceived ∧ 
+  (THE (get_envContractStates e2 caddr)).commisionDecryption ≠ 0
+Proof
+  cheat
+QED
 
 Theorem successful_trace:
 ∀ e1 s1. 
   get_envContracts e1 caddr = SOME SCdeg ∧ 
   get_envContractStates e1 caddr = SOME s1 ∧
-  s1.votingBase.status = Active ⇒
+  s1.votingBase.status = Active ∧
+  s1.commissionDecryption = 0 ⇒
   ∃ e.
   ChainTrace e1 e ∧    
   get_envContracts e caddr = SOME SCdeg ∧ 
   (THE (get_envContractStates e caddr)).votingBase.status = ResultsReceived ∧ 
-  (THE (get_envContractStates e caddr)).commisionDecryption ≠ s1.commisionDecryption
+  (THE (get_envContractStates e caddr)).commisionDecryption ≠ 0
 Proof
-  cheat
+  rpt STRIP_TAC >>
+  STRIP_ASSUME_TAC commissionKey_isFeasible >> first_x_assum (qspecl_then [‘e1’, ‘s1’] mp_tac) >> fs[] >> rw [] >>
+  STRIP_ASSUME_TAC startDate_isFeasible >> first_x_assum (qspecl_then [‘e2’, ‘THE (get_envContractStates e2 caddr)’] mp_tac)  >> fs[] >> rw [] >> 
+  STRIP_ASSUME_TAC help1 >> first_x_assum (qspecl_then [‘e2’, ‘caddr’] mp_tac) >> rw [] >> FULL_SIMP_TAC std_ss [] >>
+  STRIP_ASSUME_TAC stopDate_isFeasible >> first_x_assum (qspecl_then [‘e2'’, ‘THE (get_envContractStates e2' caddr)’] mp_tac)  >> fs[] >> rw [] >> 
+  STRIP_ASSUME_TAC help1 >> first_x_assum (qspecl_then [‘e2'’, ‘caddr’] mp_tac) >> rw [] >> FULL_SIMP_TAC std_ss []
+
+ cheat
 QED
 
 (* TO DO:
