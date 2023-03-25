@@ -39,14 +39,25 @@ execute (f:num) (params:SCvalue list) : (State, SCvalue, Exn) M =
   od
 End
 
+Definition set_state_context_def:
+  set_state_context (ctxt : Context): (State, unit, Exn) M
+  = λ state. let new_state = state with context := ctxt in (Success (), new_state)
+End
+
 Definition scReceive_def:
-  scReceive (data : Data) : (State, SCvalue, Exn) M = 
-    execute (get_functionSignature data) (get_params data) 
+  scReceive (ctxt : Context) (data : Data) : (State, SCvalue, Exn) M = 
+  do
+    _ <- set_state_context ctxt;
+    execute (get_functionSignature data) (get_params data);
+  od 
 End
 
 Definition scInit_def:
-  scInit (setup : Setup) : (State, SCvalue, Exn) M = 
-     initiateVoting (get_setupparams setup)
+  scInit (ctxt : Context) (setup : Setup) : (State, SCvalue, Exn) M = 
+     do
+     _ <- set_state_context ctxt;
+     initiateVoting (get_setupparams setup);
+     od
 End
 
 Definition SCdeg_def:
@@ -301,16 +312,37 @@ Theorem commissionKey_isFeasible:
   get_envContracts e1 caddr = SOME SCdeg ∧ 
   get_envContractStates e1 caddr = SOME s1 ∧
   s1.votingBase.status = Active ∧
-  s1.commissionDecryption = 0 ⇒
-  ∃ e2 key.
+  s1.servers = (h :: t) ∧
+  s1.commissionDecryption = 0 ∧
+  s1.commissionKey = "" ∧
+  s1.votingBase.dateStart = NONE ⇒
+  ∃ e2.
   ChainStep e1 e2 ∧    
   get_envContracts e2 caddr = SOME SCdeg ∧
   get_envContractStates e2 caddr ≠ NONE ∧
   ((THE (get_envContractStates e2 caddr)).votingBase.status = Active) ∧
-  ((THE (get_envContractStates e2 caddr))commissionDecryption = 0) ∧
-  (THE (get_envContractStates e2 caddr)).commissionKey ≠ key  
+  ((THE (get_envContractStates e2 caddr)).servers = (h :: t)) ∧
+  ((THE (get_envContractStates e2 caddr)).votingBase.dateStart = NONE) ∧
+  ((THE (get_envContractStates e2 caddr)).commissionDecryption = 0) ∧
+  ((THE (get_envContractStates e2 caddr)).commissionKey ≠ "")  
 Proof
-  cheat
+  rw [] >> fs [get_envContracts_def, get_envContractStates_def] >>
+  rw [ChainStep_cases, ActionEvaluation_cases] >> rw [set_contract_state_def, get_envContractStates_def, get_envContracts_def] >>
+  Q.EXISTS_TAC ‘(set_contract_state caddr (s1 with <|context := <|msg_sender:= h; block_number:= s1.context.block_number + 1; block_timestamp:= s1.context.block_timestamp + 100|>; mainKey := "mainKey" ; dkgKey := "dkgKey" ; commissionKey := "commissionKey" |>) e1)’ >> 
+  rw [] >- (EXISTS_TAC ``(<| actFrom := h; actType := Call caddr <|functionSignature := 2; params := [SCString "mainKey"; SCString "commissionKey"; SCString "dkgKey"] |> |>)`` >> rw [get_actType_def] >> DISJ2_TAC >>
+Q.EXISTS_TAC ‘h’ >> Q.EXISTS_TAC ‘caddr’ >> Q.EXISTS_TAC ‘SCdeg’ >> Q.EXISTS_TAC ‘s1’ >> 
+Q.EXISTS_TAC ‘<|functionSignature := 2; params := [SCString "mainKey"; SCString "commissionKey"; SCString "dkgKey"]|>’ >> 
+Q.EXISTS_TAC ‘s1.context.block_timestamp + 100’ >>
+rw [build_act_def] >>rw [SCdeg_def, get_receive_def, scReceive_def, get_functionSignature_def, execute_def, chooseFunction_def, addMainKey_def, set_state_mainKey_def, set_state_dkgKey_def, set_state_commissionKey_def] >>  
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw []>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> EVAL_TAC >> rw [] >> fs [INDEX_FIND_def] >> EVAL_TAC >> fs [typeOf_def, get_params_def]) >>
+  rw [set_contract_state_def, get_envContractStates_def, UPDATE_def]
 QED
 
 Theorem startDate_isFeasible:
@@ -318,52 +350,107 @@ Theorem startDate_isFeasible:
   get_envContracts e1 caddr = SOME SCdeg ∧ 
   get_envContractStates e1 caddr = SOME s1 ∧
   s1.votingBase.status = Active ∧ 
-  s1.commissionKey = key ∧
-  s1.commissionDecryption = 0 ⇒
-  ∃ e2 t.
+  s1.servers = (h :: t) ∧
+  s1.commissionDecryption = 0 ∧
+  s1.votingBase.dateStart = NONE ⇒
+  ∃ e2.
   ChainStep e1 e2 ∧    
   get_envContracts e2 caddr = SOME SCdeg ∧
   get_envContractStates e2 caddr ≠ NONE ∧
   ((THE (get_envContractStates e2 caddr)).votingBase.status = Active) ∧
-  (THE (get_envContractStates e2 caddr)).votingBase.dateStart ≠ NONE ∧
-  ((THE (get_envContractStates e2 caddr))commissionDecryption = 0) ∧
-  (THE (get_envContractStates e2 caddr)).commissionKey = key  
+  ((THE (get_envContractStates e2 caddr)).servers = (h :: t)) ∧
+  ((THE (get_envContractStates e2 caddr)).votingBase.dateStart ≠ NONE) ∧
+  (THE (THE (get_envContractStates e2 caddr)).votingBase.dateStart ≤ (THE (get_envContractStates e2 caddr)).context.block_timestamp) ∧
+  ((THE (get_envContractStates e2 caddr)).commissionDecryption = 0)  
 Proof
-  cheat
+    rw [] >> fs [get_envContracts_def, get_envContractStates_def] >>
+  rw [ChainStep_cases, ActionEvaluation_cases] >> rw [set_contract_state_def, get_envContractStates_def, get_envContracts_def] >>
+  Q.EXISTS_TAC ‘(set_contract_state caddr (s1 with <|context := <|msg_sender:= h; block_number:= s1.context.block_number + 1; block_timestamp:= s1.context.block_timestamp + 100|>; votingBase := s1.votingBase with dateStart := SOME (s1.context.block_timestamp + 100) |>) e1)’ >> 
+  rw [] >- (EXISTS_TAC ``(<| actFrom := h; actType := Call caddr <|functionSignature := 3; params := [] |> |>)`` >> rw [get_actType_def] >> DISJ2_TAC >>
+Q.EXISTS_TAC ‘h’ >> Q.EXISTS_TAC ‘caddr’ >> Q.EXISTS_TAC ‘SCdeg’ >> Q.EXISTS_TAC ‘s1’ >> 
+Q.EXISTS_TAC ‘<|functionSignature := 3; params := [] |>’ >> 
+Q.EXISTS_TAC ‘s1.context.block_timestamp + 100’ >>
+rw [build_act_def] >>rw [SCdeg_def, get_receive_def, scReceive_def, get_functionSignature_def, execute_def, chooseFunction_def, startVoting_def, set_state_votingBase_def] >>  
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw []>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> EVAL_TAC >> rw [] >> fs [INDEX_FIND_def] >> EVAL_TAC >> fs [typeOf_def, get_params_def]) >>
+  rw [set_contract_state_def, get_envContractStates_def, UPDATE_def]
 QED
 
 Theorem stopDate_isFeasible:
 ∀ e1 s1. 
   get_envContracts e1 caddr = SOME SCdeg ∧ 
   get_envContractStates e1 caddr = SOME s1 ∧
-  s1.votingBase.status = Active ∧ 
-  s1.commissionKey = key ∧
+  s1.votingBase.status = Active ∧
+  s1.servers = (h :: t) ∧
   s1.commissionDecryption = 0 ∧
-  s1.votingBase.dateStart ≠ NONE ⇒
+  s1.votingBase.dateStart ≠ NONE ∧
+  (THE s1.votingBase.dateStart ≤ s1.context.block_timestamp) ⇒
   ∃ e2.
   ChainStep e1 e2 ∧    
   get_envContracts e2 caddr = SOME SCdeg ∧
   get_envContractStates e2 caddr ≠ NONE ∧
   ((THE (get_envContractStates e2 caddr)).votingBase.status = Completed) ∧
-  (THE (get_envContractStates e2 caddr)).commissionKey = key  
+  ((THE (get_envContractStates e2 caddr)).servers = (h :: t)) ∧
+  ((THE (get_envContractStates e2 caddr)).commissionDecryption = 0)  
 Proof
-  cheat
+  rw [] >> fs [get_envContracts_def, get_envContractStates_def] >>
+  rw [ChainStep_cases, ActionEvaluation_cases] >> rw [set_contract_state_def, get_envContractStates_def, get_envContracts_def] >>
+  Q.EXISTS_TAC ‘(set_contract_state caddr (s1 with <|context := <|msg_sender:= h; block_number:= s1.context.block_number + 1; block_timestamp:= s1.context.block_timestamp + 86400000|>; votingBase := s1.votingBase with <| dateEnd := SOME (s1.context.block_timestamp + 86400000); status := Completed |> |>) e1)’ >> 
+  rw [] >- (EXISTS_TAC ``(<| actFrom := h; actType := Call caddr <|functionSignature := 6; params := [] |> |>)`` >> rw [get_actType_def] >> DISJ2_TAC >>
+Q.EXISTS_TAC ‘h’ >> Q.EXISTS_TAC ‘caddr’ >> Q.EXISTS_TAC ‘SCdeg’ >> Q.EXISTS_TAC ‘s1’ >> 
+Q.EXISTS_TAC ‘<|functionSignature := 6; params := [] |>’ >> 
+Q.EXISTS_TAC ‘s1.context.block_timestamp + 86400000’ >>
+rw [build_act_def] >>rw [SCdeg_def, get_receive_def, scReceive_def, get_functionSignature_def, execute_def, chooseFunction_def, finishVoting_def, set_state_votingBase_def] >>  
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw []>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> EVAL_TAC >> rw [] >> fs [INDEX_FIND_def] >> EVAL_TAC >> fs [typeOf_def, get_params_def] >> Cases_on ‘s1.votingBase.dateStart’ >> fs[] >> EVAL_TAC) >>
+  rw [set_contract_state_def, get_envContractStates_def, UPDATE_def]
 QED
 
 Theorem commissionDecryption_isFeasible:
 ∀ e1 s1. 
   get_envContracts e1 caddr = SOME SCdeg ∧ 
   get_envContractStates e1 caddr = SOME s1 ∧
-  s1.commissionKey = key ∧
   (s1.votingBase.status = Completed) ∧
+  s1.servers = (h :: t) ∧
   s1.commissionDecryption = 0 ⇒
   ∃ e2.
   ChainStep e1 e2 ∧    
   get_envContracts e2 caddr = SOME SCdeg ∧
   get_envContractStates e2 caddr ≠ NONE ∧  
-  (THE (get_envContractStates e2 caddr)).commisionDecryption ≠ 0
+  ((THE (get_envContractStates e2 caddr)).votingBase.status = Completed) ∧
+  ((THE (get_envContractStates e2 caddr)).servers = (h :: t)) ∧
+  (THE (get_envContractStates e2 caddr)).commissionDecryption ≠ 0 ∧
+  (THE (get_envContractStates e2 caddr)).commissionDecryption = (THE (get_envContractStates e2 caddr)).transactionCount
 Proof
-  cheat
+  rw [] >> fs [get_envContracts_def, get_envContractStates_def] >>
+  rw [ChainStep_cases, ActionEvaluation_cases] >> rw [set_contract_state_def, get_envContractStates_def, get_envContracts_def] >>
+  Q.EXISTS_TAC ‘(set_contract_state caddr (s1 with <|context := <|msg_sender:= h; block_number:= s1.context.block_number + 1; block_timestamp:= s1.context.block_timestamp + 1000|>; transactionCount := SUC s1.transactionCount; commissionDecryption := SUC s1.transactionCount |>) e1)’ >> 
+  rw [] >- (EXISTS_TAC ``(<| actFrom := h; actType := Call caddr <|functionSignature := 7; params := [SCString s1.commissionKey] |> |>)`` >> rw [get_actType_def] >> DISJ2_TAC >>
+Q.EXISTS_TAC ‘h’ >> Q.EXISTS_TAC ‘caddr’ >> Q.EXISTS_TAC ‘SCdeg’ >> Q.EXISTS_TAC ‘s1’ >> 
+Q.EXISTS_TAC ‘<|functionSignature := 7; params := [SCString s1.commissionKey] |>’ >> 
+Q.EXISTS_TAC ‘s1.context.block_timestamp + 1000’ >>
+rw [build_act_def] >>rw [SCdeg_def, get_receive_def, scReceive_def, get_functionSignature_def, execute_def, chooseFunction_def, commissionDecryption_def, set_state_votingBase_def] >>  
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw []>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> EVAL_TAC >> rw [] >> fs [INDEX_FIND_def] >> EVAL_TAC >> fs [typeOf_def, get_params_def]) >>
+  rw [set_contract_state_def, get_envContractStates_def, UPDATE_def]
 QED
 
 Theorem resultsReceived_isFeasible:
@@ -371,15 +458,32 @@ Theorem resultsReceived_isFeasible:
   get_envContracts e1 caddr = SOME SCdeg ∧ 
   get_envContractStates e1 caddr = SOME s1 ∧
   (s1.votingBase.status = Completed) ∧
+  s1.servers = (h :: t) ∧
   s1.commissionDecryption ≠ 0 ⇒
   ∃ e2.
   ChainStep e1 e2 ∧    
   get_envContracts e2 caddr = SOME SCdeg ∧
   get_envContractStates e2 caddr ≠ NONE ∧ 
   (THE (get_envContractStates e2 caddr)).votingBase.status = ResultsReceived ∧ 
-  (THE (get_envContractStates e2 caddr)).commisionDecryption ≠ 0
+  (THE (get_envContractStates e2 caddr)).commissionDecryption ≠ 0
 Proof
-  cheat
+  rw [] >> fs [get_envContracts_def, get_envContractStates_def] >>
+  rw [ChainStep_cases, ActionEvaluation_cases] >> rw [set_contract_state_def, get_envContractStates_def, get_envContracts_def] >>
+  Q.EXISTS_TAC ‘(set_contract_state caddr (s1 with <|context := <|msg_sender:= h; block_number:= s1.context.block_number + 1; block_timestamp:= s1.context.block_timestamp + 1000|>; results := res; votingBase := s1.votingBase with status := ResultsReceived |>) e1)’ >> 
+  rw [] >- (EXISTS_TAC ``(<| actFrom := h; actType := Call caddr <|functionSignature := 8; params := [SCNumList res] |> |>)`` >> rw [get_actType_def] >> DISJ2_TAC >>
+Q.EXISTS_TAC ‘h’ >> Q.EXISTS_TAC ‘caddr’ >> Q.EXISTS_TAC ‘SCdeg’ >> Q.EXISTS_TAC ‘s1’ >> 
+Q.EXISTS_TAC ‘<|functionSignature := 8; params := [SCNumList res] |>’ >> 
+Q.EXISTS_TAC ‘s1.context.block_timestamp + 1000’ >>
+rw [build_act_def] >>rw [SCdeg_def, get_receive_def, scReceive_def, get_functionSignature_def, execute_def, chooseFunction_def, results_def, set_state_votingBase_def] >>  
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw []>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> EVAL_TAC >> rw [] >> fs [INDEX_FIND_def] >> EVAL_TAC >> fs [typeOf_def, get_params_def]) >>
+  rw [set_contract_state_def, get_envContractStates_def, UPDATE_def]
 QED
 
 Theorem successful_trace:
@@ -387,21 +491,33 @@ Theorem successful_trace:
   get_envContracts e1 caddr = SOME SCdeg ∧ 
   get_envContractStates e1 caddr = SOME s1 ∧
   s1.votingBase.status = Active ∧
-  s1.commissionDecryption = 0 ⇒
+  s1.servers = (h :: t) ∧
+  s1.commissionDecryption = 0 ∧
+  s1.commissionKey = "" ∧
+  s1.votingBase.dateStart = NONE ⇒
   ∃ e.
   ChainTrace e1 e ∧    
   get_envContracts e caddr = SOME SCdeg ∧ 
   (THE (get_envContractStates e caddr)).votingBase.status = ResultsReceived ∧ 
-  (THE (get_envContractStates e caddr)).commisionDecryption ≠ 0
+  (THE (get_envContractStates e caddr)).commissionDecryption ≠ 0
 Proof
   rpt STRIP_TAC >>
   STRIP_ASSUME_TAC commissionKey_isFeasible >> first_x_assum (qspecl_then [‘e1’, ‘s1’] mp_tac) >> fs[] >> rw [] >>
   STRIP_ASSUME_TAC startDate_isFeasible >> first_x_assum (qspecl_then [‘e2’, ‘THE (get_envContractStates e2 caddr)’] mp_tac)  >> fs[] >> rw [] >> 
   STRIP_ASSUME_TAC help1 >> first_x_assum (qspecl_then [‘e2’, ‘caddr’] mp_tac) >> rw [] >> FULL_SIMP_TAC std_ss [] >>
   STRIP_ASSUME_TAC stopDate_isFeasible >> first_x_assum (qspecl_then [‘e2'’, ‘THE (get_envContractStates e2' caddr)’] mp_tac)  >> fs[] >> rw [] >> 
-  STRIP_ASSUME_TAC help1 >> first_x_assum (qspecl_then [‘e2'’, ‘caddr’] mp_tac) >> rw [] >> FULL_SIMP_TAC std_ss []
-
- cheat
+  STRIP_ASSUME_TAC help1 >> first_x_assum (qspecl_then [‘e2'’, ‘caddr’] mp_tac) >> rw [] >> FULL_SIMP_TAC std_ss [] >>
+  STRIP_ASSUME_TAC commissionDecryption_isFeasible >> first_x_assum (qspecl_then [‘e2''’, ‘THE (get_envContractStates e2'' caddr)’] mp_tac)  >> fs[] >> rw [] >> 
+  STRIP_ASSUME_TAC help1 >> first_x_assum (qspecl_then [‘e2''’, ‘caddr’] mp_tac) >> rw [] >> FULL_SIMP_TAC std_ss [] >>
+  STRIP_ASSUME_TAC resultsReceived_isFeasible >> first_x_assum (qspecl_then [‘e2'³'’, ‘THE (get_envContractStates e2'³' caddr)’] mp_tac)  >> fs[] >> rw [] >> 
+  STRIP_ASSUME_TAC help1 >> first_x_assum (qspecl_then [‘e2'³'’, ‘caddr’] mp_tac) >> rw [] >> FULL_SIMP_TAC std_ss [] >> 
+rw [ChainTrace_cases] >> 
+rw [Once ChainedList_cases] >> Q.EXISTS_TAC ‘e2'⁴'’ >> rw [] >> DISJ2_TAC
+Q.EXISTS_TAC `e2` >> rw [Once ChainedList_cases] >> DISJ2_TAC >> 
+Q.EXISTS_TAC `e2'` >> rw [Once ChainedList_cases] >> DISJ2_TAC >> 
+Q.EXISTS_TAC `e2''` >> rw [Once ChainedList_cases] >> DISJ2_TAC >>
+Q.EXISTS_TAC ‘e2'³'’ >> rw [Once ChainedList_cases] >> DISJ2_TAC >>
+Q.EXISTS_TAC ‘e2'⁴'’ >> rw [Once ChainedList_cases] >> DISJ2_TAC
 QED
 
 (* TO DO:

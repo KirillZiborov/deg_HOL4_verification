@@ -135,7 +135,6 @@ Definition set_state_results_def:
   = λ state. let new_state = state with results := p in (Success (), new_state)
 End
 
-
 Definition generate_transaction_id_def:
   generate_transaction_id =
   do
@@ -429,8 +428,8 @@ Definition blindSigIssue_def:
     p0 <- monadic_EL RequiredParamIsMissing 0 params;
     data <- (scvalue_to_numstringlist p0);
 
-    state <- get_state;
     transaction_id <- generate_transaction_id;
+    state <- get_state;
 
     if (state.blindSigIssueRegistrator ≠ state.context.msg_sender) 
     then do
@@ -454,6 +453,7 @@ Definition blindSigIssue_def:
 
     blindSigs <<- MAP (\(id:num, ms:string). <| userId:= id; maskedSig:= ms |>) data;
 
+    state <- get_state;
     updated_blindSigs <<- ((transaction_id, blindSigs) :: state.blindSig);
     _ <- set_state_blindSig updated_blindSigs;
 
@@ -473,8 +473,8 @@ Definition vote_def:
     sig <- (scvalue_to_num p1);
     fdh <- (scvalue_to_num p2);
 
-    state <- get_state;
     transaction_id <- generate_transaction_id;
+    state <- get_state;
 
     case (state.votingBase.dateStart) of
       NONE   => do
@@ -488,9 +488,9 @@ Definition vote_def:
                  _ <- set_state_voteFail updated_voteFail;
                  failwith StartDateHasNotComeYet;
                      od;
-
+    
+    state <- get_state;
     vote_option <<- FIND (λ x. x.userId = state.context.msg_sender) state.votes;
-
     case (vote_option) of
       NONE   => return () |
       SOME t => if (¬state.votingBase.isRevoteBlocked) 
@@ -510,7 +510,7 @@ Definition vote_def:
     (* В HOL4-модели контракта мы предполагаем, что алгоритм FDH-СТРИБОГ-256 работает корректно и опускаем его реализацию.
     Также мы предполагаем, что на вход функция vote получает помимо слепой подписи sig результат работы хэш-функции fdh 
     и сравниваем его с result: *)
-
+    state <- get_state;
     result <<- ($EXP sig state.votingBase.blindSigExponent) MOD state.votingBase.blindSigModulo; 
     if (result = fdh) then return () 
     else do  
@@ -519,7 +519,7 @@ Definition vote_def:
      failwith RevoteIsBlockedError;
          od;
 
-    
+    state <- get_state;    
     updated_votes <<- ((<| userId := state.context.msg_sender; vote := vote; blindSig :=  sig |> ) :: state.votes);
 
     _ <- set_state_votes updated_votes;
@@ -539,14 +539,13 @@ Definition finishVoting_def:
     assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
 
     case (state.votingBase.dateStart) of
-      NONE   =>  do vb <<- vb with status := Halted; return () od |
+      NONE   =>  do _ <- set_state_votingBase (vb with status := Halted); return () od |
       SOME t => if (t > state.context.block_timestamp)
-                  then do vb <<- vb with status := Halted; return () od
-                  else do vb <<- vb with status := Completed; return () od;
-
-    vb <<- vb with dateEnd := SOME state.context.block_timestamp;
-
-    _ <- set_state_votingBase vb;
+                  then do _ <- set_state_votingBase (vb with status := Halted); return () od
+                  else do _ <- set_state_votingBase (vb with status := Completed); return () od;
+    
+    state <- get_state;
+    _ <- set_state_votingBase (state.votingBase with dateEnd := SOME state.context.block_timestamp);
     return(SCUnit);
   od
 End
@@ -555,8 +554,8 @@ End
 Definition decryption_def:
   decryption : (State, SCvalue, Exn) M =
   do
-    state <- get_state;
     transaction_id <- generate_transaction_id;
+    state <- get_state;
 
     server_option <<- (find_entity state.servers state.context.msg_sender);
     assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
@@ -576,8 +575,8 @@ Definition commissionDecryption_def:
     p0 <- monadic_EL RequiredParamIsMissing 0 params;
     resolvedPublicKey <- (scvalue_to_string p0);
 
-    state <- get_state;
     transaction_id <- generate_transaction_id;
+    state <- get_state;
 
     server_option <<- (find_entity state.servers state.context.msg_sender);
     assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);

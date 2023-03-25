@@ -33,7 +33,8 @@ Definition get_setupparams_def:
 End
 
 Datatype : 
-  Contract = <| init: (Setup -> State -> (SCvalue, Exn) exc # State); receive: (Data -> State -> (SCvalue, Exn) exc # State) |>
+  Contract = <| init: (Context -> Setup -> State -> (SCvalue, Exn) exc # State); 
+                receive: (Context -> Data -> State -> (SCvalue, Exn) exc # State) |>
 End
 
 Definition build_contract_def :  
@@ -92,21 +93,23 @@ Definition build_act_def :
 End
 
 Inductive ActionEvaluation:
-      (∀ prevEnv act newEnv to c setup s0 state.
+      (* Constructor *)
+      (∀ prevEnv act newEnv from to c setup time s0 state.
       (get_envContracts prevEnv to = NONE) ∧
-      (act = build_act s0.context.msg_sender (Deploy c setup)) ∧
-      ((SND (get_init c setup s0) = state)) ∧
+      (act = build_act from (Deploy c setup)) ∧
+      ((SND (get_init c <| msg_sender:= from; block_number:= s0.context.block_number + 1; block_timestamp:= time |> setup s0) = state)) ∧
       (state.context.block_timestamp > s0.context.block_timestamp) ∧
-      (state.context.block_number > s0.context.block_number) ∧      
+      (state.context.block_number = s0.context.block_number + 1) ∧      
       (newEnv = set_contract_state to state (add_contract to c prevEnv)) ==>
       ActionEvaluation prevEnv act newEnv) ∧
-      (∀ prevEnv act newEnv to c prevState data nextState.
+      (* Call *)
+      (∀ prevEnv act newEnv from to c prevState data time nextState.
       (get_envContracts prevEnv to = SOME c) ∧
       (get_envContractStates prevEnv to = SOME prevState) ∧
-      (act = build_act prevState.context.msg_sender (Call to data)) ∧
-      (SND (get_receive c data prevState) = nextState) ∧
+      (act = build_act from (Call to data)) ∧
+      (SND (get_receive c <| msg_sender:= from; block_number:= prevState.context.block_number + 1; block_timestamp:= time |> data prevState) = nextState) ∧
       (nextState.context.block_timestamp > prevState.context.block_timestamp) ∧
-      (nextState.context.block_number > prevState.context.block_number) ∧
+      (nextState.context.block_number = prevState.context.block_number + 1) ∧
       (newEnv = set_contract_state to nextState prevEnv) ==>
       ActionEvaluation prevEnv act newEnv)
 End
