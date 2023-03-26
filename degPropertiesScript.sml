@@ -214,6 +214,37 @@ val UNDISCH_ALL = FOR_ALL_HYP UNDISCH_TAC
 val SYM_TAC : tactic = irule EQ_SYM
 
 
+Theorem vote_params_error:
+∀ state. ∀  params.   
+(¬(check_types params [TypeWord8List; TypeNum; TypeNum]) ⇒  vote params state  = fail WRN_PARAMS state)
+Proof
+  rw []>>
+  fs [vote_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]
+QED
+
+Theorem initiateVoting_params_error:
+∀ state. ∀  params.   
+(¬(check_types params [TypeNum; TypeString; TypeNumListList; TypeNum; TypeNum; TypeNumOption; TypeNumOption; TypeNumList; TypeNumList; TypeNum; TypeNum; TypeBool]) ⇒  initiateVoting params state  = fail WRN_PARAMS state)
+Proof
+  rw []>>
+  fs [initiateVoting_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]
+QED
+
+
 Theorem results_params_error:
 ∀ state. ∀  params.   
 (results params state  = fail WRN_PARAMS state) ⇔ (¬(check_types params [TypeNumList]))
@@ -296,6 +327,84 @@ Proof
   fs [raise_Fail_def, check_types_def]>>
   rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]
 QED
+
+(* TO DO:
+
+3) Доказать что функции startVoting и finishVoting выдадут ошибку ServersDoNotContainSenderPubKey в случае вызова не от сервера
+4) Доказать что функция blindSigIsuue выдаст ошибку WRN_PARAMS в случае вызова с неправильными параметрами  
+6) Доказать что функция blindSigIsuue выдаст ошибки EmptyStartDateError и StartDateHasNotComeYet в случае вызова при неустановленной дате начала голосования и при вызове до начала голосования соответственно + что эта ошибка сохранится в ключе стейта blindSigFail
+*)
+
+(* 5 *)
+Theorem blindSigIssue_authentification_error:
+∀ s1. ∀  params.
+(blindSigIssue params s1  = fail SenderIsNotBlindSigIssueRegistrator s2) ⇔ 
+(check_types params [TypeNumStringList] ∧
+∃ l. params = [SCNumStringList l] ∧
+(s1.blindSigIssueRegistrator ≠ s1.context.msg_sender) ∧
+(s1 with  <|transactionCount := SUC s1.transactionCount; 
+           blindSigFail :=
+            (SUC s1.transactionCount,SenderIsNotBlindSigIssueRegistrator)::
+                s1.blindSigFail|> = s2))
+Proof 
+ rw [] >>
+  simp [blindSigIssue_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >>every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
+  fs [set_state_blindSigFail_def] >> fs const_defs
+QED
+
+
+(* 6.1 *)
+Theorem blindSigIssue_Start1_error: 
+∀ s1. ∀  params.
+(blindSigIssue params s1  = fail EmptyStartDateError s2) ⇔ 
+(check_types params [TypeNumStringList] ∧
+∃ l. params = [SCNumStringList l] ∧
+(s1.blindSigIssueRegistrator = s1.context.msg_sender) ∧ 
+((s1.votingBase.dateStart = NONE)) ∧
+(s1 with  <|transactionCount := SUC s1.transactionCount; 
+           blindSigFail :=
+            (SUC s1.transactionCount,EmptyStartDateError)::
+                s1.blindSigFail|> = s2))
+Proof 
+  rw [] >>
+  simp [blindSigIssue_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >>every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
+  fs [set_state_blindSigFail_def] >> fs const_defs
+QED
+
 
 (* Свойство: При корректном функционировании системы итоги голосования должны быть подведены.*)
 
@@ -512,7 +621,7 @@ Proof
   STRIP_ASSUME_TAC resultsReceived_isFeasible >> first_x_assum (qspecl_then [‘e2'³'’, ‘THE (get_envContractStates e2'³' caddr)’] mp_tac)  >> fs[] >> rw [] >> 
   STRIP_ASSUME_TAC help1 >> first_x_assum (qspecl_then [‘e2'³'’, ‘caddr’] mp_tac) >> rw [] >> FULL_SIMP_TAC std_ss [] >> 
 rw [ChainTrace_cases] >> 
-rw [Once ChainedList_cases] >> Q.EXISTS_TAC ‘e2'⁴'’ >> rw [] >> DISJ2_TAC
+rw [Once ChainedList_cases] >> Q.EXISTS_TAC ‘e2'⁴'’ >> rw [] >> DISJ2_TAC >>
 Q.EXISTS_TAC `e2` >> rw [Once ChainedList_cases] >> DISJ2_TAC >> 
 Q.EXISTS_TAC `e2'` >> rw [Once ChainedList_cases] >> DISJ2_TAC >> 
 Q.EXISTS_TAC `e2''` >> rw [Once ChainedList_cases] >> DISJ2_TAC >>
@@ -520,50 +629,5 @@ Q.EXISTS_TAC ‘e2'³'’ >> rw [Once ChainedList_cases] >> DISJ2_TAC >>
 Q.EXISTS_TAC ‘e2'⁴'’ >> rw [Once ChainedList_cases] >> DISJ2_TAC
 QED
 
-(* TO DO:
-
-1) Доказать что функция initiateVoting выдаст ошибку WRN_PARAMS в случае вызова с неправильными параметрами
-2) Доказать что функция vote выдаст ошибку WRN_PARAMS в случае вызова с неправильными параметрами 
-3) Доказать что функции startVoting и finishVoting выдадут ошибку ServersDoNotContainSenderPubKey в случае вызова не от сервера
-4) Доказать что функция blindSigIsuue выдаст ошибку WRN_PARAMS в случае вызова с неправильными параметрами  
-5) Доказать что функция blindSigIsuue выдаст ошибку SenderIsNotBlindSigIssueRegistrator в случае вызова не от BlindSigIssueRegistrator + что эта ошибка сохранится в ключе стейта blindSigFail
-6) Доказать что функция blindSigIsuue выдаст ошибки EmptyStartDateError и StartDateHasNotComeYet в случае вызова при неустановленной дате начала голосования и при вызове до начала голосования соответственно + что эта ошибка сохранится в ключе стейта blindSigFail
-*)
-
-(* 5 *)
-Theorem blindSigIssue_authentification_error:
-∀ s1. ∀  params.
-(blindSigIssue params s1  = fail SenderIsNotBlindSigIssueRegistrator s3) ⇔ 
-(check_types params [TypeNumStringList] ∧
-∃ l. params = [SCNumStringList l] ∧
-(s1.blindSigIssueRegistrator ≠ s1.context.msg_sender) ∧
-(* (s2 = s1 with transactionCount := SUC s1.transactionCount) ∧
-(s3 = s2 with blindSigFail := ((s2.transactionCount, SenderIsNotBlindSigIssueRegistrator) :: s2.blindSigFail))) *)
-(s1 with  <|transactionCount := SUC s1.transactionCount; 
-           blindSigFail :=
-            (SUC s1.transactionCount,SenderIsNotBlindSigIssueRegistrator)::
-                s1.blindSigFail|> = s3))
-Proof 
- rw [] >>
-  simp [blindSigIssue_def]>>
-  simp [ml_monadBaseTheory.st_ex_bind_def] >>
-  simp [ml_monadBaseTheory.st_ex_return_def] >>
-  simp [boolTheory.FUN_EQ_THM] >>
-  simp [get_state_def] >>
-  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
-  simp [assert_def] >>
-  simp [raise_Fail_def, check_types_def]>>
-  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
-  EVAL_TAC >>every_case_tac >>
-  fs [ml_monadBaseTheory.st_ex_bind_def] >>
-  fs [ml_monadBaseTheory.st_ex_return_def] >>
-  fs [boolTheory.FUN_EQ_THM] >>
-  fs [get_state_def] >>
-  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
-  fs [assert_def] >>
-  fs [raise_Fail_def, check_types_def]>>
-  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
-  fs [set_state_blindSigFail_def, SenderIsNotBlindSigIssueRegistrator_def, EmptyStartDateError_def, StartDateHasNotComeYet_def, WRN_PARAMS_def] >> fs const_defs
-QED
 
 val _ = export_theory();
