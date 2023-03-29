@@ -516,7 +516,7 @@ Definition vote_def:
     else do  
      updated_voteFail <<- ((transaction_id, (state.context.msg_sender, InvalidBlindSig)) :: state.voteFail);
      _ <- set_state_voteFail updated_voteFail;
-     failwith RevoteIsBlockedError;
+     failwith InvalidBlindSig;
          od;
 
     state <- get_state;    
@@ -580,7 +580,7 @@ Definition commissionDecryption_def:
 
     server_option <<- (find_entity state.servers state.context.msg_sender);
     assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
-    assert VotingIsNotYetFinished(state.votingBase.status = Completed);
+    assert VotingIsNotYetFinished (state.votingBase.status = Completed);
 
     (* Проверка приватного ключа на публичном ключе state.commissionKey *)
     (* В HOL4-модели контракта мы предполагаем, что алгоритм проверки приватного ключа на публичном ключе работает корректно и 

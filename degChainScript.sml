@@ -98,8 +98,7 @@ Inductive ActionEvaluation:
       (get_envContracts prevEnv to = NONE) ∧
       (act = build_act from (Deploy c setup)) ∧
       ((SND (get_init c <| msg_sender:= from; block_number:= s0.context.block_number + 1; block_timestamp:= time |> setup s0) = state)) ∧
-      (state.context.block_timestamp > s0.context.block_timestamp) ∧
-      (state.context.block_number = s0.context.block_number + 1) ∧      
+      (state.context.block_timestamp > s0.context.block_timestamp) ∧     
       (newEnv = set_contract_state to state (add_contract to c prevEnv)) ==>
       ActionEvaluation prevEnv act newEnv) ∧
       (* Call *)
@@ -109,7 +108,6 @@ Inductive ActionEvaluation:
       (act = build_act from (Call to data)) ∧
       (SND (get_receive c <| msg_sender:= from; block_number:= prevState.context.block_number + 1; block_timestamp:= time |> data prevState) = nextState) ∧
       (nextState.context.block_timestamp > prevState.context.block_timestamp) ∧
-      (nextState.context.block_number = prevState.context.block_number + 1) ∧
       (newEnv = set_contract_state to nextState prevEnv) ==>
       ActionEvaluation prevEnv act newEnv)
 End

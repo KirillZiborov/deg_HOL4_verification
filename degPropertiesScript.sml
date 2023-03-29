@@ -235,21 +235,21 @@ Proof
   simp [raise_Fail_def, check_types_def]
 QED
 
-(* 0.2) В результате вызова с правильными типами параметров, функция отработает корректно 
+(* 0.2) В результате вызова с правильными типами параметров, функция отработает корректно *)
 
 Theorem initiateVoting_correctness:
-∀ s1. ∀s2.
-  (params = [SCNum pollId; SCString bulletinHash; SCListList dimension; SCNum blindSigModulo; SCNum blindSigExponent; SCNumOption dateStart; SCNumOption dateEnd; SCNumList servers; SCNumList votersListRegistrators; SCNum blindSigIssueRegistrator; SCNum IssueBallotsRegistrator; SCBool isRevoteBlocked] ∧
+∀ s1.
+  (params = [SCNum pollId; SCString bulletinHash; SCNumListList dimension; SCNum blindSigModulo; SCNum blindSigExponent; SCNumOption dateStart; SCNumOption dateEnd; SCNumList servers; SCNumList votersListRegistrators; SCNum blindSigIssueRegistrator; SCNum IssueBallotsRegistrator; SCBool isRevoteBlocked] ∧
   servers ≠ [] ∧
   (s1 with <|votingBase := <|pollId:= pollId; bulletinHash:= bulletinHash; dimension:= dimension; blindSigModulo:= blindSigModulo; blindSigExponent:= blindSigExponent; dateStart:= dateStart; dateEnd:= dateEnd; isRevoteBlocked:= isRevoteBlocked; status:= Active; startDateIssueBallots:= NONE; stopDateIssueBallots:= NONE|>; 
             servers:= servers;
             VotersListRegistrator:= votersListRegistrators;
             blindSigIssueRegistrator:= blindSigIssueRegistrator;
             IssueBallotsRegistrator:= IssueBallotsRegistrator |> = s2)) ⇒
-  (initiateVoting params s1  = (Success SCUnit, s2))
+  (initiateVoting params s1 = (Success SCUnit, s2))
 Proof 
  rw [] >>
-  simp [blindSigIssue_def]>>
+  simp [initiateVoting_def]>>
   simp [ml_monadBaseTheory.st_ex_bind_def] >>
   simp [ml_monadBaseTheory.st_ex_return_def] >>
   simp [boolTheory.FUN_EQ_THM] >>
@@ -267,12 +267,21 @@ Proof
   fs [assert_def] >>
   fs [raise_Fail_def, check_types_def]>>
   rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
-  fs [set_state_blindSigFail_def] >> fs const_defs
-QED *)
+  fs [typeOf_def] >> fs const_defs
+QED
+
+(*** 2) Функция addMainKey ***)
+
+(* TO DO!!! 2.1) При вызове с неправильными типами параметров функция выдаст ошибку WRN_PARAMS *)
+
+(* TO DO!!! 2.2) Если отправитель не указан в ключе SERVERS, то функция выдаст ошибку ServersDoNotContainSenderPubKey *)
+
+(* TO DO!!! 2.3) Если VOTING_BASE.dateStart раньше текущего времени (UTC по часам смарт-контракта) или VOTING_BASE.status не равно Active, то функция выдаст ошибку VotingAlreadyStarted 
+Если dateStart не заполнено и VOTING_BASE.status не равно Active, то функция выдаст ошибку VotingIsNotInProgress*)
 
 (*** 3) Функция startVoting ***)
 
-(* 3.1) При вызове с неправильными типами параметров функция выдаст ошибку WRN_PARAMS *)
+(* 3.1) Если отправитель не указан в ключе SERVERS, то функция выдаст ошибку ServersDoNotContainSenderPubKey *)
 
 Theorem startVoting_authentification_error:
 ∀ state.
@@ -300,17 +309,72 @@ Proof
   rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]
 QED
 
+(* 3.2) Если dateStart уже заполнен, транзакция отклоняется с ошибкой StartDateAlreadyInStateError *)
+
+Theorem startVoting_date_error:
+∀ state.
+(startVoting state  = fail StartDateAlreadyInStateError state) ⇔ 
+(find_entity state.servers state.context.msg_sender ≠ NONE ∧
+state.votingBase.dateStart ≠ NONE)
+Proof 
+  rw [] >>
+  simp [startVoting_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >>every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
+  fs [set_state_blindSigFail_def] >> fs const_defs
+QED
+
 (*** 4) Функция blindSigIssue ***)
 
-(* 4.1) При вызове с неправильными типами параметров функция выдаст ошибку WRN_PARAMS TO DO!!!*)
+(* 4.1) При вызове с неправильными типами параметров функция выдаст ошибку WRN_PARAMS *)
+
+Theorem blindSigIssue_params_error:
+∀ s1 params.
+(blindSigIssue params s1  = fail WRN_PARAMS s1) ⇔  (¬(check_types params [TypeNumStringList]))
+Proof
+  rw []>>
+  simp [blindSigIssue_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >> every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>> 
+  fs [set_state_blindSigFail_def] >> fs const_defs
+QED
 
 (* 4.2) Если отправитель не указан в ключе BLINDSIG_ISSUE_REGISTRATOR, то функция выдаёт ошибку SenderIsNotBlindSigIssueRegistrator и сохраняет причину отклонения транзации *)
 
 Theorem blindSigIssue_authentification_error:
-∀ s1. ∀  params.
+∀ s1 s2 params.
 (blindSigIssue params s1  = fail SenderIsNotBlindSigIssueRegistrator s2) ⇔ 
-(check_types params [TypeNumStringList] ∧
-∃ l. params = [SCNumStringList l] ∧
+(∃ l. params = [SCNumStringList l] ∧
 (s1.blindSigIssueRegistrator ≠ s1.context.msg_sender) ∧
 (s1 with  <|transactionCount := SUC s1.transactionCount; 
            blindSigFail :=
@@ -334,7 +398,7 @@ Proof
   fs [get_state_def] >>
   fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
   fs [assert_def] >>
-  fs [raise_Fail_def, check_types_def]>>
+  fs [raise_Fail_def, check_types_def, typeOf_def]>>
   rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
   fs [set_state_blindSigFail_def] >> fs const_defs
 QED
@@ -342,12 +406,11 @@ QED
 (* 4.3) Если VOTING_BASE.dateStart позже текущего времени (UTC по часам смарт-контракта) или VOTING_BASE.status равно active, то функция выдаёт ошибку и сохраняет причину отклонения транзации *)
 
 Theorem blindSigIssue_EmptyStartDateError: 
-∀ s1. ∀  params.
+∀ s1 s2 params.
 (blindSigIssue params s1  = fail EmptyStartDateError s2) ⇔ 
-(check_types params [TypeNumStringList] ∧
-∃ l. params = [SCNumStringList l] ∧
-(s1.blindSigIssueRegistrator = s1.context.msg_sender) ∧ 
-((s1.votingBase.dateStart = NONE)) ∧
+(∃ l. params = [SCNumStringList l] ∧
+s1.blindSigIssueRegistrator = s1.context.msg_sender ∧ 
+s1.votingBase.dateStart = NONE ∧
 (s1 with  <|transactionCount := SUC s1.transactionCount; 
            blindSigFail :=
             (SUC s1.transactionCount,EmptyStartDateError)::
@@ -370,15 +433,80 @@ Proof
   fs [get_state_def] >>
   fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
   fs [assert_def] >>
-  fs [raise_Fail_def, check_types_def]>>
+  fs [raise_Fail_def, check_types_def, typeOf_def]>>
   rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
   fs [set_state_blindSigFail_def] >> fs const_defs
 QED
 
-(* TO DO: остальные случаи
-4.3) Доказать что функция blindSigIsuue выдаст ошибки EmptyStartDateError и StartDateHasNotComeYet в случае вызова при неустановленной дате начала голосования и при вызове до начала голосования соответственно + что эта ошибка сохранится в ключе стейта blindSigFail
-*)
+Theorem blindSigIssue_StartDateHasNotComeYet_error: 
+∀ s1 s2 params.
+(∃ l. params = [SCNumStringList l] ∧
+s1.blindSigIssueRegistrator = s1.context.msg_sender ∧ 
+s1.votingBase.dateStart = SOME t ∧ 
+((t ≥ s1.context.block_timestamp) ∨ (s1.votingBase.status ≠ Active)) ∧ 
+(s1 with  <|transactionCount := SUC s1.transactionCount; 
+           blindSigFail :=
+            (SUC s1.transactionCount,StartDateHasNotComeYet)::
+                s1.blindSigFail|> = s2)) ⇒
+(blindSigIssue params s1  = fail StartDateHasNotComeYet s2)
+Proof 
+rw [] >>
+  simp [blindSigIssue_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >>every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def, typeOf_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
+  fs [set_state_blindSigFail_def] >> fs const_defs
+QED
 
+(* 4.4) При прохождени всех проверок каждое значение из массива параметров добавляется в список blindSig, хранящийся в стейте *)
+
+Theorem blindSigIssue_success: 
+∀ s1 s2 params. 
+(params = [SCNumStringList l] ∧
+s1.blindSigIssueRegistrator = s1.context.msg_sender ∧ 
+s1.votingBase.dateStart = SOME t ∧
+t < s1.context.block_timestamp ∧ 
+s1.votingBase.status = Active ∧
+s2 = s1 with <|transactionCount := SUC s1.transactionCount; 
+           blindSig := ((SUC s1.transactionCount, 
+                         MAP (λ(id:num, ms:string). <| userId:= id; maskedSig:= ms |>) l) :: s1.blindSig) |>) ⇒
+(blindSigIssue params s1  = (Success SCUnit, s2))
+Proof 
+  rw [] >>
+  simp [blindSigIssue_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >>every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def, typeOf_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
+  fs [set_state_blindSigFail_def] >> fs const_defs
+QED
 
 (*** 5) Функция vote ***)
 
@@ -399,9 +527,194 @@ Proof
   simp [raise_Fail_def, check_types_def]
 QED
 
+(* 5.2) Если VOTING_BASE.dateStart позже текущего времени (UTC по часам смарт-контракта) или VOTING_BASE.status не равно active, то функция выдаст соответствующую ошибку *)
+
+Theorem vote_EmptyStartDate_error: 
+∀ s1 s2 params.
+(params = [SCWord8List v; SCNum sig; SCNum fdh] ∧
+s1.votingBase.dateStart = NONE ∧
+(s1 with  <|transactionCount := SUC s1.transactionCount; 
+           voteFail :=
+            (SUC s1.transactionCount,(s1.context.msg_sender, EmptyStartDateError))::
+                s1.voteFail|> = s2)) ⇒
+(vote params s1  = fail EmptyStartDateError s2)
+Proof 
+  rw [] >>
+  simp [vote_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >>every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def, typeOf_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
+  fs [set_state_voteFail_def] >> fs const_defs
+QED
+
+(* 5.3) Если переголосование заблокировано и голос уже существует, функция выдаст ошибку RevoteIsBlockedError *)
+
+Theorem vote_revote_error: 
+∀ s1 s2  params. 
+(params = [SCWord8List v; SCNum sig; SCNum fdh] ∧
+s1.votingBase.dateStart = SOME t ∧
+t < s1.context.block_timestamp ∧ 
+s1.votingBase.status = Active ∧
+(FIND (λ x. x.userId = s1.context.msg_sender) s1.votes ≠ NONE) ∧
+s1.votingBase.isRevoteBlocked ∧
+(s1 with  <|transactionCount := SUC s1.transactionCount; 
+           voteFail :=
+            (SUC s1.transactionCount,(s1.context.msg_sender, RevoteIsBlockedError))::
+                s1.voteFail|> = s2)) ⇒
+(vote params s1  = fail RevoteIsBlockedError s2)
+Proof 
+  rw [] >>
+  simp [vote_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >>every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def, typeOf_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
+  fs [set_state_voteFail_def, FIND_def] >> fs const_defs
+QED
+
+(* TO DO!!!: 5.4) Если на стейте контракта уже есть голос участника, и VOTE_<publicKey>.blindSig на стейте не совпадает с blindSig транзакции, то функция выдаст ошибку BlindSigIsNotEqual *)
+
+Theorem vote_BlindSigIsNotEqual_error: 
+∀ s1 s2 params.
+(params = [SCWord8List v; SCNum sig; SCNum fdh] ∧
+s1.votingBase.dateStart = SOME t ∧
+t < s1.context.block_timestamp ∧ 
+s1.votingBase.status = Active ∧
+(FIND (λ x. x.userId = s1.context.msg_sender) s1.votes = SOME vo) ∧
+¬s1.votingBase.isRevoteBlocked ∧
+vo.blindSig ≠ sig ∧
+(s1 with  <|transactionCount := SUC s1.transactionCount; 
+           voteFail :=
+            (SUC s1.transactionCount,(s1.context.msg_sender, BlindSigIsNotEqual))::
+                s1.voteFail|> = s2)) ⇒
+(vote params s1  = fail BlindSigIsNotEqual s2)
+Proof 
+  rw [] >>
+  simp [vote_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >>every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def, typeOf_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
+  fs [set_state_voteFail_def, FIND_def] >> fs const_defs
+QED
+
+(* TO DO!!!: 5.5) Наличие аутентификации *)
+Theorem vote_BlindSigIsNotEqual_error: 
+∀ s1. ∀  params.
+(vote params s1  = fail InvalidBlindSig s2) ⇔ 
+(∃ v sig fdh. params = [SCWord8List v; SCNum sig; SCNum fdh] ∧
+s1.votingBase.dateStart = SOME t ∧
+t < s1.context.block_timestamp ∧ 
+s1.votingBase.status = Active ∧
+((FIND (λ x. x.userId = s1.context.msg_sender) s1.votes = NONE) ∨ 
+((FIND (λ x. x.userId = s1.context.msg_sender) s1.votes = SOME vo) ∧  ¬s1.votingBase.isRevoteBlocked ∧ vo.blindSig = sig)) ∧
+(($EXP sig s1.votingBase.blindSigExponent) MOD s1.votingBase.blindSigModulo ≠ fdh)
+(s1 with  <|transactionCount := SUC s1.transactionCount; 
+           voteFail :=
+            (SUC s1.transactionCount,(s1.context.msg_sender, InvalidBlindSig))::
+                s1.voteFail|> = s2))
+Proof 
+  rw [] >>
+  simp [vote_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >>every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def, typeOf_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
+  fs [set_state_voteFail_def] >> fs const_defs
+QED
+
+(* TO DO!!!: 5.6) В случае корректной работы голос сохраняется *)
+Theorem vote_success: 
+∀ s1 s2 params.
+(params = [SCWord8List v; SCNum sig; SCNum fdh] ∧
+s1.votingBase.dateStart = SOME t ∧
+t < s1.context.block_timestamp ∧ 
+s1.votingBase.status = Active ∧
+((FIND (λ x. x.userId = s1.context.msg_sender) s1.votes = NONE) \/ 
+((FIND (λ x. x.userId = s1.context.msg_sender) s1.votes = SOME vo) ∧  ¬s1.votingBase.isRevoteBlocked ∧ vo.blindSig = sig)) ∧
+(($EXP sig s1.votingBase.blindSigExponent) MOD s1.votingBase.blindSigModulo = fdh)
+(s1 with  <|transactionCount := SUC s1.transactionCount; 
+           votes := (<| userId := s1.context.msg_sender; vote := v; blindSig :=  sig |> ) :: s1.votes) ⇒
+(blindSigIssue params s1  = (Success SCUnit, s2))
+Proof 
+  rw [] >>
+  simp [vote_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >>every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def, typeOf_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >> 
+  fs [set_state_voteFail_def] >> fs const_defs
+QED
+
 (*** 6) Функция finishVoting ***)
 
-(* 6.1) При вызове с неправильными типами параметров функция выдаст ошибку WRN_PARAMS *)
+(* 6.1) Если отправитель не указан в ключе SERVERS, то функция выдаст ошибку ServersDoNotContainSenderPubKey *)
 
 Theorem finishVoting_authentification_error:
 ∀ state.
@@ -430,7 +743,17 @@ Proof
   fs[set_state_votingBase_def]
 QED
 
+(* TO DO!!!: 6.2) Статусы устанавливаются корректно *)
+
 (*** 7) Функция commissionDecryption ***)
+
+(* TO DO!!!: 7.1) При вызове с неправильными типами параметров функция выдаст ошибку WRN_PARAMS *)
+
+(* TO DO!!!: 7.2) Если отправитель не указан в ключе SERVERS, то функция выдаст ошибку ServersDoNotContainSenderPubKey *)
+
+(* TO DO!!!: 7.3) Если VOTING_BASE.status не равно completed, то функция выдаст ошибку VotingIsNotYetFinished *)
+
+(* TO DO!!!: 7.4) Проверка ключа *)
 
 (*** 8) Функция results ***)
 
