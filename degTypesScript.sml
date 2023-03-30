@@ -35,7 +35,7 @@ Datatype:
 End
 
 Datatype:
-  vote = <| userId: num; vote: word8 list; blindSig: num |>;
+  vote = <| userId: num; vote: num; blindSig: num |>;
 End
 
 Datatype:
@@ -84,7 +84,6 @@ Datatype:
   | TypeNumOption
   | TypeNumListList
   | TypeNumStringList
-  | TypeWord8List
 End
 
 Datatype:
@@ -96,7 +95,6 @@ Datatype:
   | SCNumList (num list)
   | SCNumOption (num option)
   | SCNumStringList ((num # string) list)
-  | SCWord8List (word8 list)
 End
 
 Definition typeOf_def:
@@ -107,8 +105,7 @@ Definition typeOf_def:
   typeOf (SCNumList _) = TypeNumList ∧
   typeOf (SCNumOption _) = TypeNumOption ∧
   typeOf (SCNumListList _) = TypeNumListList ∧
-  typeOf (SCNumStringList _) = TypeNumStringList ∧
-  typeOf (SCWord8List _) = TypeWord8List
+  typeOf (SCNumStringList _) = TypeNumStringList
 End
 
 Definition check_types_def:

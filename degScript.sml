@@ -169,13 +169,6 @@ scvalue_to_string (sc:SCvalue) : (State, string, Exn) M  =
   | _ => (Failure (Fail RequiredParamValueMissing), s)) (*Failure*)
 End
 
-Definition scvalue_to_word8list_def:
-scvalue_to_word8list (sc:SCvalue) : (State, word8 list, Exn) M  =
-  (λ (s:State). case sc of
-    SCWord8List stri => (Success stri, s)  (*Success*)
-  | _ => (Failure (Fail RequiredParamValueMissing), s)) (*Failure*)
-End
-
 Definition scvalue_to_numlist_def:
 scvalue_to_numlist (sc:SCvalue) : (State, num list, Exn) M  =
   (λ (s:State). case sc of
@@ -465,13 +458,11 @@ End
 Definition vote_def:
   vote (params : SCvalue list) : (State, SCvalue, Exn) M =
   do
-    assert  WRN_PARAMS (check_types params [TypeWord8List; TypeNum; TypeNum]);
+    assert  WRN_PARAMS (check_types params [TypeNum; TypeNum]);
     p0 <- monadic_EL RequiredParamIsMissing 0 params;
     p1 <- monadic_EL RequiredParamIsMissing 1 params;
-    p2 <- monadic_EL RequiredParamIsMissing 2 params;
-    vote <- (scvalue_to_word8list p0);
-    sig <- (scvalue_to_num p1);
-    fdh <- (scvalue_to_num p2);
+    sig <- (scvalue_to_num p0);
+    fdh <- (scvalue_to_num p1);
 
     transaction_id <- generate_transaction_id;
     state <- get_state;
@@ -488,11 +479,23 @@ Definition vote_def:
                  _ <- set_state_voteFail updated_voteFail;
                  failwith StartDateHasNotComeYet;
                      od;
-    
-    state <- get_state;
+
     vote_option <<- FIND (λ x. x.userId = state.context.msg_sender) state.votes;
     case (vote_option) of
-      NONE   => return () |
+      NONE   => 
+      (* Проверка корректности слепой подписи *)
+      (* В HOL4-модели контракта мы предполагаем, что алгоритм FDH-СТРИБОГ-256 работает корректно и опускаем его реализацию.
+         Также мы предполагаем, что на вход функция vote получает помимо слепой подписи sig результат работы хэш-функции fdh 
+          и сравниваем его с result: *)
+      do
+        result <<- ($EXP sig state.votingBase.blindSigExponent) MOD state.votingBase.blindSigModulo; 
+        if (result = fdh) then return () 
+        else do  
+          updated_voteFail <<- ((transaction_id, (state.context.msg_sender, InvalidBlindSig)) :: state.voteFail);
+          _ <- set_state_voteFail updated_voteFail;
+          failwith InvalidBlindSig;
+            od;
+      od |
       SOME t => if (¬state.votingBase.isRevoteBlocked) 
                 then if (t.blindSig = sig) then return ()
                      else do
@@ -504,24 +507,10 @@ Definition vote_def:
                  updated_voteFail <<- ((transaction_id, (state.context.msg_sender, RevoteIsBlockedError)) :: state.voteFail);
                   _ <- set_state_voteFail updated_voteFail;
                  failwith RevoteIsBlockedError;
-                     od;
-
-    (* Проверка корректности слепой подписи *)
-    (* В HOL4-модели контракта мы предполагаем, что алгоритм FDH-СТРИБОГ-256 работает корректно и опускаем его реализацию.
-    Также мы предполагаем, что на вход функция vote получает помимо слепой подписи sig результат работы хэш-функции fdh 
-    и сравниваем его с result: *)
-    state <- get_state;
-    result <<- ($EXP sig state.votingBase.blindSigExponent) MOD state.votingBase.blindSigModulo; 
-    if (result = fdh) then return () 
-    else do  
-     updated_voteFail <<- ((transaction_id, (state.context.msg_sender, InvalidBlindSig)) :: state.voteFail);
-     _ <- set_state_voteFail updated_voteFail;
-     failwith InvalidBlindSig;
-         od;
+                     od;    
 
     state <- get_state;    
-    updated_votes <<- ((<| userId := state.context.msg_sender; vote := vote; blindSig :=  sig |> ) :: state.votes);
-
+    updated_votes <<- ((<| userId := state.context.msg_sender; vote := transaction_id; blindSig := sig |> ) :: state.votes);
     _ <- set_state_votes updated_votes;
 
     return(SCUnit);
