@@ -60,7 +60,7 @@ set_state_dkgKey (s :  string): (State, unit, Exn) M
 End
 
 Definition set_state_decryption_def:
-set_state_decryption (s : (num # num) list): (State, unit, Exn) M
+set_state_decryption (s : (num -> num)): (State, unit, Exn) M
   = λ state. let new_state = state with decryption := s in (Success (), new_state)
 End
 
@@ -90,22 +90,22 @@ set_state_VotersListRegistrator  (vlrs : num list): (State, unit, Exn) M
 End
 
 Definition set_state_votersList_def:
-  set_state_votersList (p : (num # string) list): (State, unit, Exn) M
+  set_state_votersList (p : (num -> string)): (State, unit, Exn) M
   = λ state. let new_state = state with votersList := p in (Success (), new_state)
 End
 
 Definition set_state_votersListAdd_def:
-  set_state_votersListAdd (p : (num # string) list): (State, unit, Exn) M
+  set_state_votersListAdd (p : (num -> string)): (State, unit, Exn) M
   = λ state. let new_state = state with votersListAdd := p in (Success (), new_state)
 End
 
 Definition set_state_votersListRemove_def:
-  set_state_votersListRemove (p : (num # string) list): (State, unit, Exn) M
+  set_state_votersListRemove (p : (num -> string)): (State, unit, Exn) M
   = λ state. let new_state = state with votersListRemove := p in (Success (), new_state)
 End
 
 Definition set_state_blindSig_def:
-  set_state_blindSig (p : (num # blindSig list) list): (State, unit, Exn) M
+  set_state_blindSig (p : (num -> blindSig list)): (State, unit, Exn) M
   = λ state. let new_state = state with blindSig := p in (Success (), new_state)
 End
 
@@ -114,9 +114,8 @@ Definition set_state_votes_def:
   = λ state. let new_state = state with votes := p in (Success (), new_state)
 End
 
-
 Definition set_state_blindSigFail_def:
-  set_state_blindSigFail (p : (num # string) list): (State, unit, Exn) M
+  set_state_blindSigFail (p : (num -> string)): (State, unit, Exn) M
   = λ state. let new_state = state with blindSigFail := p in (Success (), new_state)
 End
 
@@ -307,7 +306,7 @@ Definition addVotersList_def:
 
     transaction_id <- generate_transaction_id;
 
-    updated_voters <<- ((transaction_id, userIdHashes) :: state.votersList);    
+    updated_voters <<- (state.votersList (|transaction_id |-> userIdHashes|));    
         _ <- set_state_votersList updated_voters;
     return(SCUnit);
   od
@@ -328,7 +327,7 @@ Definition removeFromVotersList_def:
 
     transaction_id <- generate_transaction_id;
 
-    updated_removedVoters <<- ((transaction_id, userIdHashes) :: state.votersListRemove);
+    updated_removedVoters <<- (state.votersListRemove (|transaction_id |-> userIdHashes|));
         _ <- set_state_votersListRemove updated_removedVoters;
     return(SCUnit);
   od
@@ -349,7 +348,7 @@ Definition addToVotersList_def:
 
     transaction_id <- generate_transaction_id;
 
-    updated_addedVoters <<- ((transaction_id, userIdHashes) :: state.votersListAdd);
+    updated_addedVoters <<- (state.votersListAdd (|transaction_id |-> userIdHashes|));
         _ <- set_state_votersListAdd updated_addedVoters;
     return(SCUnit);
   od
@@ -426,20 +425,20 @@ Definition blindSigIssue_def:
 
     if (state.blindSigIssueRegistrator ≠ state.context.msg_sender) 
     then do
-        updated_blindSigFail <<- ((transaction_id, SenderIsNotBlindSigIssueRegistrator) :: state.blindSigFail);
+        updated_blindSigFail <<- (state.blindSigFail (|transaction_id |-> SenderIsNotBlindSigIssueRegistrator|));
         _ <- set_state_blindSigFail updated_blindSigFail;
         failwith SenderIsNotBlindSigIssueRegistrator;
       od
     else case (state.votingBase.dateStart) of
       NONE   => do
-                updated_blindSigFail <<- ((transaction_id, EmptyStartDateError) :: state.blindSigFail);
+                updated_blindSigFail <<- (state.blindSigFail (|transaction_id |-> EmptyStartDateError|));
                 _ <- set_state_blindSigFail updated_blindSigFail;
                  failwith EmptyStartDateError;
                 od |
       SOME t => if ((t < state.context.block_timestamp) /\ (state.votingBase.status = Active))
                 then return ()
                 else do
-                 updated_blindSigFail <<- ((transaction_id, StartDateHasNotComeYet) :: state.blindSigFail);
+                 updated_blindSigFail <<- (state.blindSigFail (|transaction_id |-> StartDateHasNotComeYet|));
                  _ <- set_state_blindSigFail updated_blindSigFail;
                  failwith StartDateHasNotComeYet;
                      od;
@@ -447,7 +446,7 @@ Definition blindSigIssue_def:
     blindSigs <<- MAP (\(id:num, ms:string). <| userId:= id; maskedSig:= ms |>) data;
 
     state <- get_state;
-    updated_blindSigs <<- ((transaction_id, blindSigs) :: state.blindSig);
+    updated_blindSigs <<- (state.blindSig (|transaction_id |-> blindSigs|));
     _ <- set_state_blindSig updated_blindSigs;
 
     return(SCUnit);
@@ -550,7 +549,7 @@ Definition decryption_def:
     assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
     assert VotingIsNotYetFinished(state.votingBase.status = Completed);
 
-    updated_decryption <<- ((transaction_id, state.context.msg_sender) :: state.decryption);
+    updated_decryption <<- (state.decryption (|transaction_id |-> state.context.msg_sender|));
     _ <- set_state_decryption updated_decryption;
     return(SCUnit);
   od

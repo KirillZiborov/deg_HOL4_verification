@@ -58,19 +58,19 @@ Datatype:
     dkgKey: string;
     mainKey: string;
 
-    votersList: (num # string) list;
-    votersListAdd: (num # string) list;
-    votersListRemove: (num # string) list;
+    votersList: num -> string;
+    votersListAdd: num -> string;
+    votersListRemove: num -> string;
 
-    blindSig: (num # blindSig list) list;
+    blindSig: num -> blindSig list;
     votes: vote list;
     
-    decryption: (num # num) list;
+    decryption: num -> num;
     commissionDecryption: num;
     
     results: num list;    
     
-    blindSigFail: (num # string) list; 
+    blindSigFail: num -> string; 
     voteFail: (num # (num # string)) list;
     |>
 End

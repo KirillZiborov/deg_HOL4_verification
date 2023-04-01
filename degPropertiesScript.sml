@@ -630,7 +630,7 @@ Theorem blindSigIssue_authentification_error:
   (blindSigIssue [SCNumStringList l] s1 = fail SenderIsNotBlindSigIssueRegistrator s2) ⇔ 
   (s1.blindSigIssueRegistrator ≠ s1.context.msg_sender ∧
   (s1 with  <|transactionCount := SUC s1.transactionCount; 
-              blindSigFail := (SUC s1.transactionCount,SenderIsNotBlindSigIssueRegistrator) :: s1.blindSigFail|> = s2))
+              blindSigFail := s1.blindSigFail (| SUC s1.transactionCount |-> SenderIsNotBlindSigIssueRegistrator |)|> = s2))
 Proof 
  rw [] >>
   simp [blindSigIssue_def]>>
@@ -663,7 +663,7 @@ Theorem blindSigIssue_EmptyStartDateError:
   (s1.blindSigIssueRegistrator = s1.context.msg_sender ∧ 
   s1.votingBase.dateStart = NONE ∧
   (s1 with <|transactionCount := SUC s1.transactionCount; 
-             blindSigFail := (SUC s1.transactionCount,EmptyStartDateError) :: s1.blindSigFail|> = s2))
+             blindSigFail := s1.blindSigFail (| SUC s1.transactionCount |-> EmptyStartDateError |)|> = s2))
 Proof 
   rw [] >>
   simp [blindSigIssue_def]>>
@@ -693,7 +693,7 @@ Theorem blindSigIssue_StartDateHasNotComeYet_error:
   (∃t. s1.votingBase.dateStart = SOME t ∧ 
   ((t ≥ s1.context.block_timestamp) ∨ (s1.votingBase.status ≠ Active))) ∧ 
   (s1 with <|transactionCount := SUC s1.transactionCount; 
-             blindSigFail := (SUC s1.transactionCount,StartDateHasNotComeYet) :: s1.blindSigFail|> = s2)) ⇔
+             blindSigFail := s1.blindSigFail (| SUC s1.transactionCount |-> StartDateHasNotComeYet |)|> = s2)) ⇔
   (blindSigIssue [SCNumStringList l] s1  = fail StartDateHasNotComeYet s2)
 Proof 
   rw [] >>
@@ -728,7 +728,7 @@ Theorem blindSigIssue_correctness:
   s1.votingBase.status = Active) ⇔
   (blindSigIssue [SCNumStringList l] s1 = (Success SCUnit, 
                                            s1 with <|transactionCount := SUC s1.transactionCount; 
-                                                     blindSig := ((SUC s1.transactionCount, MAP (λ(id:num, ms:string). <| userId:= id; maskedSig:= ms |>) l) :: s1.blindSig) |>))
+                                                     blindSig := s1.blindSig (| SUC s1.transactionCount |-> (MAP (λ(id:num, ms:string). <| userId:= id; maskedSig:= ms |>) l) |) |>))
 Proof 
   rw [] >>
   simp [blindSigIssue_def]>>
