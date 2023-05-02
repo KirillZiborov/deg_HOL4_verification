@@ -1,12 +1,29 @@
 # deg_HOL4_verification
 
-Имплементация и верификация смарт-контракта ДЭГ в HOL4.
-https://github.com/cikrf/deg2021/tree/master/contracts
+Implementation and verification of the [DEG smart contract](https://github.com/cikrf/deg2021/tree/master/contracts) in HOL4 
 
-Доказанные свойства:
+## Content:
 
-1) Аутентификация избирателя.
+__1) degTypesScript.sml__
 
-2) Конфиденциальность промежуточных результатов.
+Implementation of smart contract types in HOL4.
 
-3) Невозможность саботажа со стороны внешних нарушителей.
+__2) degScript__
+
+Implementation of smart contract functions in HOL4.
+
+__3) degChainScript__
+
+Framework for embedding a smart contract in an environment model and for specifying its properties in HOL4.
+
+__4) degPropertiesScript__
+
+Proofs of smart contract and its functions properties.
+
+Properties that have been proven
+
+1) Voter authentication in SC.
+
+2) Privacy of intermediate results.
+
+3) The impossibility of sabotage by external violators.
