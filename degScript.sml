@@ -279,7 +279,7 @@ Definition addMainKey_def:
     case (state.votingBase.dateStart) of
       NONE   => assert VotingIsNotInProgress (state.votingBase.status = Active) |
       SOME t =>
-    assert VotingAlreadyStarted ((t > state.context.block_timestamp) /\ (state.votingBase.status = Active));
+    assert VotingAlreadyStarted ((t > state.context.block_timestamp) ∧ (state.votingBase.status = Active));
     
     mainKey <- (scvalue_to_string p0);
     commissionKey <- (scvalue_to_string p1);
@@ -435,7 +435,7 @@ Definition blindSigIssue_def:
                 _ <- set_state_blindSigFail updated_blindSigFail;
                  failwith EmptyStartDateError;
                 od |
-      SOME t => if ((t < state.context.block_timestamp) /\ (state.votingBase.status = Active))
+      SOME t => if ((t < state.context.block_timestamp) ∧ (state.votingBase.status = Active))
                 then return ()
                 else do
                  updated_blindSigFail <<- (state.blindSigFail (|transaction_id |-> StartDateHasNotComeYet|));
@@ -472,7 +472,7 @@ Definition vote_def:
                   _ <- set_state_voteFail updated_voteFail;
                  failwith EmptyStartDateError;
                 od |
-      SOME t => if ((t < state.context.block_timestamp) /\ (state.votingBase.status = Active)) then return ()
+      SOME t => if ((t < state.context.block_timestamp) ∧ (state.votingBase.status = Active)) then return ()
                 else do
                  updated_voteFail <<- ((transaction_id, (state.context.msg_sender, StartDateHasNotComeYet)) :: state.voteFail);
                  _ <- set_state_voteFail updated_voteFail;
@@ -482,10 +482,6 @@ Definition vote_def:
     vote_option <<- FIND (λ x. x.userId = state.context.msg_sender) state.votes;
     case (vote_option) of
       NONE   => 
-      (* Проверка корректности слепой подписи *)
-      (* В HOL4-модели контракта мы предполагаем, что алгоритм FDH-СТРИБОГ-256 работает корректно и опускаем его реализацию.
-         Также мы предполагаем, что на вход функция vote получает помимо слепой подписи sig результат работы хэш-функции fdh 
-          и сравниваем его с result: *)
       do
         result <<- ($EXP sig state.votingBase.blindSigExponent) MOD state.votingBase.blindSigModulo; 
         if (result = fdh) then return () 
@@ -525,6 +521,7 @@ Definition finishVoting_def:
 
     server_option <<- (find_entity state.servers state.context.msg_sender);
     assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
+    assert "Voting is already completed" (vb.status = Active ∨ vb.status = Halted); 
 
     case (state.votingBase.dateStart) of
       NONE   =>  do _ <- set_state_votingBase (vb with status := Halted); return () od |
@@ -569,11 +566,6 @@ Definition commissionDecryption_def:
     server_option <<- (find_entity state.servers state.context.msg_sender);
     assert ServersDoNotContainSenderPubKey (server_option ≠ NONE);
     assert VotingIsNotYetFinished (state.votingBase.status = Completed);
-
-    (* Проверка приватного ключа на публичном ключе state.commissionKey *)
-    (* В HOL4-модели контракта мы предполагаем, что алгоритм проверки приватного ключа на публичном ключе работает корректно и 
-    опускаем его реализацию.
-    Также мы предполагаем, что на вход функция получает сразу resolvedPublicKey, полученный из приватного ключа *)
     assert InvalidCommissionSecretKey (state.commissionKey = resolvedPublicKey);
 
     _ <- set_state_commission_decryption transaction_id;

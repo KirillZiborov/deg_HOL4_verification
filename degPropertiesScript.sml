@@ -987,6 +987,7 @@ Theorem finishVoting_Halted:
   (finishVoting s1 = (Success SCUnit, 
                       s1 with votingBase := s1.votingBase with <|dateEnd := SOME s1.context.block_timestamp; status := Halted |>)) ⇔
   (find_entity s1.servers s1.context.msg_sender ≠ NONE) ∧
+  (s1.votingBase.status = Active ∨ s1.votingBase.status = Halted) ∧
   (s1.votingBase.dateStart = NONE ∨ 
   (∃t. s1.votingBase.dateStart = SOME t ∧ t > s1.context.block_timestamp))
 Proof  
@@ -1532,6 +1533,333 @@ Proof
   Q.EXISTS_TAC `e2'` >> rw [Once ChainedList_cases] >> DISJ2_TAC >> 
   Q.EXISTS_TAC `e2''` >> rw [Once ChainedList_cases] >> DISJ2_TAC >>
   Q.EXISTS_TAC ‘e2'³'’ >> rw [Once ChainedList_cases] >> DISJ2_TAC
+QED
+
+(* Нельзя уменьшить статус! *)
+Definition status_numeration_def:
+  status_numeration Active = (1 : num) ∧
+  status_numeration Halted = 2 ∧
+  status_numeration Completed = 3 ∧
+  status_numeration ResultsReceived = 4
+End
+
+Theorem deploy_same_state:
+   ∀e1 e2 to caddr c setup s1 state act from.
+   get_envContracts e1 caddr = SOME SCdeg ∧
+   get_envContractStates e1 caddr = SOME s1 ∧
+   get_envContracts e1 to = NONE ∧
+   act = build_act from (Deploy c setup) ∧
+   e2 = set_contract_state to (SND (get_init c <|msg_sender := from; block_number := s0.context.block_number + 1;
+                                                 block_timestamp := time|> setup s0)) (add_contract to c e1) ⇒  
+   get_envContractStates e2 caddr = SOME s1
+Proof
+    rpt STRIP_TAC >> 
+    rw [get_envContractStates_def, add_contract_def, get_envContracts_def, set_contract_state_def, 
+    get_envContractStates_def, UPDATE_def] >> fs [get_envContractStates_def]
+QED
+
+Theorem set_state_same_addr:
+    ∀ e1 nextState caddr sc. get_envContracts e1 caddr = sc ⇒
+    get_envContracts (set_contract_state caddr nextState e1) caddr = sc
+Proof
+    FULL_SIMP_TAC (srw_ss()) [get_envContracts_def, set_contract_state_def]
+QED
+
+Theorem none_not_some_addr:
+    ∀ e1 to caddr. e1.envContracts to = NONE ∧ e1.envContracts caddr = SOME SCdeg ⇒ ~ (to = caddr)
+Proof
+    rpt STRIP_TAC >> FULL_SIMP_TAC std_ss []
+QED
+
+Theorem not_decreasing_after_updateServerList:
+status_numeration (SND 
+  (do
+    _ <- set_state_context context;
+    v <- updateServerList (get_params data);
+    return v
+    od s1)).votingBase.status ≥ status_numeration s1.votingBase.status
+Proof
+  rw []>>
+  simp [updateServerList_def, set_state_context_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >> every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]
+QED
+
+Theorem not_decreasing_after_addMainKey:
+status_numeration (SND 
+  (do
+    _ <- set_state_context context;
+    v <- addMainKey (get_params data);
+    return v
+    od s1)).votingBase.status ≥ status_numeration s1.votingBase.status
+Proof
+  rw []>>
+  simp [addMainKey_def, set_state_context_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >> every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]
+QED
+
+Theorem not_decreasing_after_startVoting:
+status_numeration (SND 
+  (do
+    _ <- set_state_context context;
+    v <- startVoting;
+    return v
+    od s1)).votingBase.status ≥ status_numeration s1.votingBase.status
+Proof
+  rw []>>
+  simp [startVoting_def, set_state_context_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >> every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]
+QED
+
+Theorem not_decreasing_after_blindSigIssue:
+status_numeration (SND 
+  (do
+    _ <- set_state_context context;
+    v <- blindSigIssue (get_params data);
+    return v
+    od s1)).votingBase.status ≥ status_numeration s1.votingBase.status
+Proof
+  rw [] >>
+  simp [blindSigIssue_def, set_state_context_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >> every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >>
+  fs [set_state_blindSigFail_def] >> fs const_defs >> rw [status_numeration_def]
+QED
+
+Theorem not_decreasing_after_vote:
+status_numeration (SND 
+  (do
+    _ <- set_state_context context;
+    v <- vote (get_params data);
+    return v
+    od s1)).votingBase.status ≥ status_numeration s1.votingBase.status
+Proof
+  rw []>>
+  simp [vote_def, set_state_context_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >> every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >>
+  fs [set_state_voteFail_def] >> fs const_defs >> rw [status_numeration_def]
+QED
+
+Theorem not_decreasing_after_finishVoting:
+status_numeration (SND 
+  (do
+    _ <- set_state_context context;
+    v <- finishVoting;
+    return v
+    od s1)).votingBase.status ≥ status_numeration s1.votingBase.status
+Proof
+  rw []>>
+  simp [finishVoting_def, set_state_context_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >> every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[] >>
+  fs [set_state_votingBase_def] >> fs const_defs >> rw [status_numeration_def]
+QED
+
+Theorem not_decreasing_after_commissionDecryption:
+status_numeration (SND 
+  (do
+    _ <- set_state_context context;
+    v <- commissionDecryption (get_params data);
+    return v
+    od s1)).votingBase.status ≥ status_numeration s1.votingBase.status
+Proof
+  rw []>>
+  simp [commissionDecryption_def, set_state_context_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >> every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]
+QED
+
+Theorem not_decreasing_after_results:
+status_numeration (SND 
+  (do
+    _ <- set_state_context context;
+    v <- results (get_params data);
+    return v
+    od s1)).votingBase.status ≥ status_numeration s1.votingBase.status
+Proof
+  rw []>>
+  simp [results_def, set_state_context_def]>>
+  simp [ml_monadBaseTheory.st_ex_bind_def] >>
+  simp [ml_monadBaseTheory.st_ex_return_def] >>
+  simp [boolTheory.FUN_EQ_THM] >>
+  simp [get_state_def] >>
+  simp [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  simp [assert_def] >>
+  simp [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]>>
+  EVAL_TAC >> every_case_tac >>
+  fs [ml_monadBaseTheory.st_ex_bind_def] >>
+  fs [ml_monadBaseTheory.st_ex_return_def] >>
+  fs [boolTheory.FUN_EQ_THM] >>
+  fs [get_state_def] >>
+  fs [ml_monadBaseTheory.st_ex_ignore_bind_def] >>
+  fs [assert_def] >>
+  fs [raise_Fail_def, check_types_def]>>
+  rw[]>>EVAL_TAC>>UNDISCH_ALL>>rw[]
+QED
+
+Theorem not_decreasing_after_execute:
+  ∀context data (s1 s2:State).
+  s2 = (SND (scReceive context data s1)) ⇒ 
+  status_numeration(s2.votingBase.status) >= status_numeration(s1.votingBase.status)
+Proof
+    FULL_SIMP_TAC std_ss [scReceive_def, execute_def] >> rw [] >> Cases_on ‘get_functionSignature data’ >> FULL_SIMP_TAC std_ss [chooseFunction_def, raise_Fail_def] >- (EVAL_TAC >> rw []) >>
+    Cases_on ‘n = 0’ >> FULL_SIMP_TAC (srw_ss()) [] >> PURE_REWRITE_TAC [not_decreasing_after_updateServerList] >>
+    Cases_on ‘n = 1’ >> FULL_SIMP_TAC (srw_ss()) [] >> PURE_REWRITE_TAC [not_decreasing_after_addMainKey] >>
+    Cases_on ‘n = 2’ >> FULL_SIMP_TAC (srw_ss()) [] >> PURE_REWRITE_TAC [not_decreasing_after_startVoting] >>
+    Cases_on ‘n = 3’ >> FULL_SIMP_TAC (srw_ss()) [] >> PURE_REWRITE_TAC [not_decreasing_after_blindSigIssue] >>
+    Cases_on ‘n = 4’ >> FULL_SIMP_TAC (srw_ss()) [] >> PURE_REWRITE_TAC [not_decreasing_after_vote] >>
+    Cases_on ‘n = 5’ >> FULL_SIMP_TAC (srw_ss()) [] >> PURE_REWRITE_TAC [not_decreasing_after_finishVoting] >>
+    Cases_on ‘n = 6’ >> FULL_SIMP_TAC (srw_ss()) [] >> PURE_REWRITE_TAC [not_decreasing_after_commissionDecryption] >>
+    Cases_on ‘n = 7’ >> FULL_SIMP_TAC (srw_ss()) [] >> PURE_REWRITE_TAC [not_decreasing_after_results] >>
+    rw[] >> FULL_SIMP_TAC std_ss [] >> EVAL_TAC >> rw[]
+QED
+
+Theorem status_not_decreasing:
+  ∀(e1 e2:Environment) (s1 s2:State) caddr. 
+  get_envContracts e1 caddr = SOME SCdeg ∧ 
+  get_envContractStates e1 caddr = SOME s1 ∧ 
+  get_envContracts e2 caddr = SOME SCdeg ∧ 
+  get_envContractStates e2 caddr = SOME s2 ∧ 
+  ChainTrace e1 e2  ⇒ 
+  status_numeration(s2.votingBase.status) >= status_numeration(s1.votingBase.status)
+Proof
+  FULL_SIMP_TAC std_ss [ChainTrace_cases] >> 
+  Induct_on ‘ChainedList ChainStep e1 e2’ >> 
+  STRIP_TAC >-
+  (rw[] >> FULL_SIMP_TAC std_ss []) >>
+  rpt STRIP_TAC >> FULL_SIMP_TAC std_ss [Once ChainStep_cases] >> 
+  FULL_SIMP_TAC std_ss [Once ActionEvaluation_cases] >-
+  (STRIP_ASSUME_TAC deploy_same_state >> first_x_assum (qspecl_then [‘e1’, ‘e1'’, ‘to’, ‘caddr’, ‘c’, ‘setup’, ‘s1’, 
+  ‘state’, ‘act’, ‘from’] mp_tac) >> FULL_SIMP_TAC (srw_ss()) [] >> STRIP_TAC >> 
+  FULL_SIMP_TAC (srw_ss()) [build_act_def,get_actType_def] >> rw [] >> 
+  first_x_assum (qspecl_then [‘s1’, ‘s2’, ‘caddr’] mp_tac) >> FULL_SIMP_TAC (srw_ss()) [] >> 
+  STRIP_TAC >> 
+  FULL_SIMP_TAC (srw_ss()) [add_contract_def, get_envContracts_def, set_contract_state_def, get_envContractStates_def, UPDATE_def] >>
+  STRIP_ASSUME_TAC none_not_some_addr >> first_x_assum (qspecl_then [‘e1’, ‘to’, ‘caddr’] mp_tac) >> FULL_SIMP_TAC (srw_ss()) []) >>
+  Cases_on ‘to=caddr’ >- 
+  (FULL_SIMP_TAC std_ss [get_receive_def] >> FULL_SIMP_TAC (srw_ss()) [SCdeg_def] >> FULL_SIMP_TAC std_ss [scReceive_def] >> 
+  FULL_SIMP_TAC (srw_ss()) [build_act_def,get_actType_def] >> rw [] >> fs [] >>
+  first_x_assum (qspecl_then [‘(SND (scReceive <| msg_sender:= from; block_number:= prevState.context.block_number + 1; block_timestamp:= time |> data prevState))’, ‘s2’, ‘caddr’] mp_tac) >> 
+  FULL_SIMP_TAC (srw_ss()) [] >> STRIP_TAC >>
+  STRIP_ASSUME_TAC not_decreasing_after_execute >> 
+  first_x_assum (qspecl_then [‘<| msg_sender:= from; block_number:= prevState.context.block_number + 1; block_timestamp:= time |>’, ‘data’, ‘prevState’, ‘(SND (scReceive <| msg_sender:= from; block_number:= prevState.context.block_number + 1; block_timestamp:= time |> data prevState))’] mp_tac) >> 
+  FULL_SIMP_TAC (srw_ss()) [] >> STRIP_TAC >> 
+  STRIP_ASSUME_TAC set_state_same_addr >> 
+  first_x_assum (qspecl_then [‘e1’, ‘(SND (scReceive <| msg_sender:= from; block_number:= prevState.context.block_number + 1; block_timestamp:= time |> data prevState))’, ‘caddr’, ‘SOME <|init := scInit; receive := scReceive|>’] mp_tac) >> 
+  FULL_SIMP_TAC (srw_ss()) [] >> STRIP_TAC >> 
+  FULL_SIMP_TAC (srw_ss()) [set_contract_state_def, get_envContractStates_def, UPDATE_def] >> rw []) >> 
+  FULL_SIMP_TAC (srw_ss()) [build_act_def,get_actType_def] >> rw [] >> 
+  first_x_assum (qspecl_then [‘s1’, ‘s2’, ‘caddr’] mp_tac) >> FULL_SIMP_TAC (srw_ss()) [] >> 
+  STRIP_TAC >> FULL_SIMP_TAC (srw_ss()) [set_contract_state_def, get_envContractStates_def, get_envContracts_def, UPDATE_def]
 QED
 
 val _ = export_theory();
